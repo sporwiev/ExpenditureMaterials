@@ -11,6 +11,7 @@ using BifServiceExpenditureMaterials.Models;
 using Wpf.Ui.Controls;
 using BifServiceExpenditureMaterials.Views.Windows;
 using System.Linq;
+using BifServiceExpenditureMaterials.ViewModels.Pages;
 
 namespace BifServiceExpenditureMaterials.Views.Pages
 {
@@ -28,8 +29,9 @@ namespace BifServiceExpenditureMaterials.Views.Pages
         public static bool isOpenFiltes = false;
         public static TabControl tab;
         public static TabItem? ActiveTabItem;
-        private CancellationTokenSource _cts;
+        private CancellationTokenSource? _cts;
         public static bool isUpdate = false;
+        public HomeViewModel ViewModel { get; set; }
 
         
         public HomePage()
@@ -42,6 +44,12 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             
             SizeChanged += HomePage_SizeChanged;
             //215D5922-38C0-4840-AE4F-88A4C2841B36
+        }
+        public HomePage(HomeViewModel viewModel)
+        {
+            InitializeComponent();
+            DataContext = this;
+            this.ViewModel = viewModel;
         }
 
         private void HomePage_SizeChanged(object sender, SizeChangedEventArgs e)

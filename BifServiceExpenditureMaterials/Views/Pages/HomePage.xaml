@@ -5,7 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:BifServiceExpenditureMaterials.Views.Pages"
              xmlns:controls="clr-namespace:BifServiceExpenditureMaterials.Controls"
- 
+             xmlns:vm="clr-namespace:BifServiceExpenditureMaterials.ViewModels.Pages"
+             d:DataContext="{d:DesignInstance local:HomePage,
+                                     IsDesignTimeCreatable=True}"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              mc:Ignorable="d" 
              Background="Transparent"
@@ -203,9 +205,10 @@
                         <TextBlock Text="Поиск" VerticalAlignment="Center" Margin="10,0,0,0"/>
                         <ui:AutoSuggestBox Background="LightGray" x:Name="SearchTextBox" PlaceholderText="Поиск по машинам..." Width="220" Margin="10,0,0,0" Grid.Column="1"/>
                     </StackPanel>
+                <Button Grid.Column="6" Content="Печать"  Padding="0" Height="40" Width="80" HorizontalAlignment="Center" Command="{Binding ViewModel.PrintButton_ClickCommand}"/>
 
 
-                </Grid>
+            </Grid>
 
 
 
