@@ -12,7 +12,7 @@
     Height="650"
     
     WindowStyle="None"
-    d:DataApp.dBcontext="{d:DesignInstance local:MainWindow,
+    d:DataContext="{d:DesignInstance local:MainWindow,
                                      IsDesignTimeCreatable=True}"
     d:DesignHeight="450"
     d:DesignWidth="800"
