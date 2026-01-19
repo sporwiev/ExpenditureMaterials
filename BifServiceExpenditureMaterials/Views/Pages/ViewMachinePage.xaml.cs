@@ -34,7 +34,11 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             }
                 Loaded += ViewMachinePage_Loaded;
         }
-
+        /// <summary>
+        /// Открытие страницы
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void ViewMachinePage_Loaded(object sender, RoutedEventArgs e)
         {
             
