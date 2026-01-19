@@ -1,0 +1,50 @@
+﻿<Window x:Class="BifServiceExpenditureMaterials.Forms.FormAddOil"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:BifServiceExpenditureMaterials.Forms"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
+        WindowStyle="None"
+        Title="FormAddOil" Height="450" Width="350">
+        
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <GroupBox Header="Масло" BorderThickness="3" BorderBrush="#9a9a9a">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5">
+                    <TextBlock Margin="20,0,10,0" Width="90" VerticalAlignment="Center">Тип</TextBlock>
+                    <ComboBox x:Name="OilTypeComboBox" Width="200" Background="LightGray" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5">
+                    <TextBlock Margin="20,0,10,0" Width="90" VerticalAlignment="Center">Марка</TextBlock>
+                    <ComboBox x:Name="OilBrandComboBox" Background="LightGray" Width="200" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5">
+                    <TextBlock Margin="20,0,10,0" Width="90" VerticalAlignment="Center">Вязкость</TextBlock>
+                    <ComboBox x:Name="OilViscosityComboBox" Background="LightGray" Width="200" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5">
+                    <TextBlock Margin="20,0,10,0" Width="90" VerticalAlignment="Center">Литры</TextBlock>
+                    <ui:TextBox x:Name="OilLitersTextBox" PlaceholderText="50" Background="LightGray" Width="200" />
+                </StackPanel>
+                <GroupBox Header="Заливаемая часть" BorderThickness="3" BorderBrush="#9a9a9a" Height="200">
+                    <ScrollViewer VerticalScrollBarVisibility="Visible" Margin="5">
+                        <StackPanel Orientation="Vertical" x:Name="panelSubunit">
+                            <Button HorizontalAlignment="Stretch" Margin="5" Click="Button_Click_2">Добавить</Button>
+                            
+                        </StackPanel>
+                    </ScrollViewer>
+                </GroupBox>
+            </StackPanel>
+        </GroupBox>
+        <StackPanel Orientation="Horizontal" Grid.Row="1" x:Name="pan">
+            <Button Content="Добавить" Margin="0,0,20,0" Click="Button_Click_1"/>
+            <Button Content="Закрыть" Click="Button_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

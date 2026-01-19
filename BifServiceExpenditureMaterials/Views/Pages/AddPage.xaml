@@ -1,0 +1,67 @@
+﻿<UserControl x:Class="BifServiceExpenditureMaterials.Views.Pages.AddPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:BifServiceExpenditureMaterials.Views.Pages"
+             xmlns:controls="clr-namespace:BifServiceExpenditureMaterials.Controls"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid>
+        <GroupBox Header="Добавить новый продукт">
+            <Grid Margin="10" x:Name="grid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="35"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="60"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Выбор" Margin="0,0,0,10"/>
+                    <ComboBox SelectedIndex="0" Margin="0,0,0,10" x:Name="combo" Background="#DCDCDC">
+                        <ComboBoxItem Content="Масло"/>
+                        <ComboBoxItem Content="Антифриз"/>
+                        <ComboBoxItem Content="Смазка"/>
+                        <ComboBoxItem Content="Фильтр"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <TextBlock Text="сущность1" x:Name="suzh1" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
+                <TextBox   x:Name="suzhtextbox1" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" IsManipulationEnabled="False" IsEnabled="True" Panel.ZIndex="1" Background="#DCDCDC"></TextBox>
+                <ComboBox  x:Name="suzhcombobox1" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" IsManipulationEnabled="False" IsEnabled="False" Panel.ZIndex="0" Background="#DCDCDC"></ComboBox>
+                <TextBlock Text="сущность2" x:Name="suzh2" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"/>
+                <TextBox   x:Name="suzhtextbox2" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" Background="#DCDCDC"></TextBox>
+                <ComboBox  x:Name="suzhcombobox2" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" IsManipulationEnabled="False" IsEnabled="false" Background="#DCDCDC" Panel.ZIndex="1"></ComboBox>
+                <TextBlock Text="сущность3" x:Name="suzh3" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center"/>
+                <TextBox   x:Name="suzhtextbox3" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Background="#DCDCDC"></TextBox>
+                <ComboBox  x:Name="suzhcombobox3" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" IsManipulationEnabled="False" IsEnabled="false" Panel.ZIndex="1" Background="#DCDCDC"></ComboBox>
+                <TextBlock Text="Фильтр" Grid.Row="5" Grid.Column="0" VerticalAlignment="Center"/>
+                <TextBox   Grid.Row="5" x:Name="filterTextBox" Grid.Column="1" VerticalAlignment="Center" Background="#DCDCDC"></TextBox>
+                
+                <Button Grid.Column="2" x:Name="but1" Grid.Row="2" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Padding="0" Margin="1" Click="Button_Click_1">
+                    <Image Source="pack://application:,,,/reset.png" Margin="7"/>
+                </Button>
+                <Button Grid.Column="2" x:Name="but2" Grid.Row="3" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Padding="0" Margin="1" Click="Button_Click_1">
+                    <Image Source="pack://application:,,,/reset.png" Margin="7"/>
+                </Button>
+                <Button Grid.Column="2" x:Name="but3" Grid.Row="4" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Padding="0" Margin="1" Click="Button_Click_1">
+                    <Image Source="pack://application:,,,/reset.png" Margin="7"/>
+                </Button>
+
+                <Button Grid.Row="6" Content="Добавить" Click="Button_Click"/>
+            </Grid>
+        </GroupBox>
+    </Grid>
+
+</UserControl>

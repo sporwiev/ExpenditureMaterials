@@ -1,0 +1,31 @@
+﻿<UserControl x:Class="BifServiceExpenditureMaterials.Views.Pages.UpdateApplicationPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+xmlns:local="clr-namespace:BifServiceExpenditureMaterials.Views.Pages"
+xmlns:controls="clr-namespace:BifServiceExpenditureMaterials.Controls"
+xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+mc:Ignorable="d" 
+d:DesignHeight="500" d:DesignWidth="800">
+    <Grid Margin="15">
+        <StackPanel>
+            <TextBlock Text="Обновить клиент" FontSize="30"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock x:Name="CurrentVersion" Text="Текущая версия" FontSize="20" Margin="0,0,10,0"/>
+                <TextBlock x:Name="TextBlockVersion" FontSize="20"/>
+                
+            </StackPanel>
+            <Button Background="LightGray" x:Name="ButtonInstallProject" Content="Установить" Click="ButtonInstallProject_Click" Margin="5"/>
+            <Button Background="LightGray" x:Name="ButtonInstall" Content="Установить" Click="ButtonInstall_Click" Margin="5"/>
+            <StackPanel Margin="5">
+                <ui:ListView x:Name="ListBoxVersionProject" Height="400">
+                    
+                </ui:ListView>
+            </StackPanel>
+            
+            
+        </StackPanel>
+
+    </Grid>
+</UserControl>

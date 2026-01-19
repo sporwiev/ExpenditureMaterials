@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>logo1.ico</ApplicationIcon>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="logo1.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hardcodet.Wpf.TaskbarNotification" Version="1.0.5" />
+    <PackageReference Include="InputSimulator" Version="1.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.Lolita" Version="6.0.5" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.Lolita.Sqlite" Version="6.0.5" />
+    <PackageReference Include="System.Management" Version="9.0.6" />
+    <PackageReference Include="WPF-UI" Version="4.0.2" />
+    <PackageReference Include="WPF-UI.DependencyInjection" Version="4.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0 " />
+    <PackageReference Include="Zeroconf" Version="3.7.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Assets\bifIcon.png" />
+    <None Remove="Assets\crane-truck.png" />
+    <None Remove="Assets\left-arrow.png" />
+    <None Remove="Assets\right-arrow.png" />
+    <None Remove="Assets\smoke-bomb.png" />
+    <None Remove="Assets\windowpreloadImage.png" />
+    <None Remove="Assets\wpfui-icon-256.png" />
+    <None Remove="Assets\wpfui-icon-1024.png" />
+    <None Remove="bifIcon.ico" />
+    <None Remove="filter.png" />
+    <None Remove="reset.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\bifIcon.png" />
+    <Resource Include="Assets\crane-truck.png" />
+    <Resource Include="Assets\left-arrow.png" />
+    <Resource Include="Assets\right-arrow.png" />
+    <Resource Include="Assets\smoke-bomb.png" />
+    <Resource Include="Assets\windowpreloadImage.png" />
+    <Resource Include="Assets\wpfui-icon-256.png" />
+    <Resource Include="Assets\wpfui-icon-1024.png" />
+    <Resource Include="bifIcon.ico" />
+    <Resource Include="filter.png" />
+    <Resource Include="reset.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Forms\FormDol.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Views\Pages\BayMaterials.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="TestControl\" />
+  </ItemGroup>
+
+</Project>

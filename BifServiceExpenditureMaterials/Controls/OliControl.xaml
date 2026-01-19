@@ -1,0 +1,42 @@
+﻿<UserControl x:Class="BifServiceExpenditureMaterials.Controls.OliControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:BifServiceExpenditureMaterials.Controls"
+             mc:Ignorable="d" 
+             d:DataApp.dBcontext="{d:DesignInstance local:OliControl, IsDesignTimeCreatable=True}"
+             MinHeight="31.62" Width="170">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Border Background="Gray"  CornerRadius="7,7,0,0" VerticalAlignment="Stretch" >
+            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Width="{Binding ActualWidth}">
+                <TextBlock Text="{Binding brendTitle}" VerticalAlignment="Center" Margin="10,0,10,0"/>
+                <TextBlock Text="{Binding vilocityTitle}" VerticalAlignment="Center" Margin="10,0,10,0"/>
+                <TextBlock Text="{Binding valueTitle}" VerticalAlignment="Center" Margin="10,0,10,0"/>
+            </WrapPanel>
+        </Border>
+        <Border Grid.Row="1" x:Name="VisiblePanel" Visibility="Collapsed" Background="Gray">
+            <WrapPanel Orientation="Vertical" x:Name="panel" Margin="10,0,0,0"/>
+        </Border>
+        <Border Background="Gray" Grid.Row="2"  CornerRadius="0,0,7,7" VerticalAlignment="Stretch" >
+            <Button Grid.Row="2" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" Click="Button_Click">
+                <StackPanel>
+                    <Image Source="pack://application:,,,/Assets/right-arrow.png" Width="10">
+                        <Image.RenderTransform>
+                            <RotateTransform x:Name="trsnalateImage" Angle="90" CenterX="5" CenterY="5"/>
+                        </Image.RenderTransform>
+                    </Image>
+                </StackPanel>
+            </Button>
+        </Border>
+
+    </Grid>
+</UserControl>

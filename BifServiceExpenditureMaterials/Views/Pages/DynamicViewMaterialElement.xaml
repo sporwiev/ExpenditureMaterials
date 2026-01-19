@@ -1,0 +1,28 @@
+﻿<UserControl x:Class="BifServiceExpenditureMaterials.Views.Pages.DynamicViewMaterialElement"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:BifServiceExpenditureMaterials.Views.Pages"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800" Background="White" Loaded="UserControl_Loaded">
+    <Grid>
+        <Button BorderThickness="0" VerticalAlignment="Stretch" Background="Transparent" Width="150" HorizontalAlignment="Left" GotFocus="Border_GotFocusLeft" LostFocus="Border_LostFocusLeft" Click="Button_ClickLeft">
+            <Image Source="/Assets/left-arrow.png" Width="70" VerticalAlignment="Center">
+                <Image.RenderTransform>
+                    <RotateTransform Angle="0" CenterX="40" CenterY="30"/>
+                </Image.RenderTransform>
+            </Image>
+        </Button>
+        <StackPanel HorizontalAlignment="Stretch" Width="500" x:Name="panelDynamicCards">
+            
+        </StackPanel>
+        <Button BorderThickness="0" VerticalAlignment="Stretch" Background="Transparent" Width="150" HorizontalAlignment="Right" GotFocus="Border_GotFocusRight" LostFocus="Border_LostFocusRight" Click="Button_ClickRight">
+            <Image Source="/Assets/left-arrow.png" Width="70" VerticalAlignment="Center">
+                <Image.RenderTransform>
+                    <RotateTransform Angle="180" CenterX="40" CenterY="30"/>
+                </Image.RenderTransform>
+            </Image>
+        </Button>
+    </Grid>
+</UserControl>
