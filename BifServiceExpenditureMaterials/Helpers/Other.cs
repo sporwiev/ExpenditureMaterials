@@ -64,6 +64,20 @@ namespace BifServiceExpenditureMaterials.Helpers
                 "Декабрь"
             };
         }
+        private static List<string> getDayList()
+        {
+            List<string> list = new List<string>();
+            for (int i = 1; i < 32; i++)
+                list.Add(i.ToString());
+            return list;
+        }
+        private static List<string> getYearList()
+        {
+            List<string> list = new List<string>();
+            for (int i = 2024; i < 2030; i++)
+                list.Add(i.ToString());
+            return list;
+        }
         public static string GetPathProject(string name)
         {
             string path = "";
@@ -77,6 +91,10 @@ namespace BifServiceExpenditureMaterials.Helpers
 
             }
             return path;
+        }
+        public static int GetValueInYacheyka(string yacheyka)
+        {
+            return Convert.ToInt32(yacheyka.Split(":").ToList().Last());
         }
     }
 }

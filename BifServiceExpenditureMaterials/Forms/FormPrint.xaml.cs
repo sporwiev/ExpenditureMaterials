@@ -21,14 +21,20 @@ namespace BifServiceExpenditureMaterials.Forms
     public partial class FormPrint : Window
     {
 
-        public FormPrintViewModel ViewModel;
+        public FormPrintViewModel? ViewModel;
 
         public FormPrint(FormPrintViewModel ViewModel)
         {
             InitializeComponent();
             DataContext = this;
             this.ViewModel = ViewModel;
+            MessageBox.Show(ViewModel.DayComboBox.Count.ToString());
         }
+        public FormPrint()
+        {
+            InitializeComponent();
+        }
+        
 
     }
 }
