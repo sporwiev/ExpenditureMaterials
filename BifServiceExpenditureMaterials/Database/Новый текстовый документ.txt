@@ -1,0 +1,59 @@
+package airport;
+import com.skillbox.airport.Airport;
+import com.skillbox.airport.Flight;
+import com.skillbox.airport.Terminal;
+
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class Main {
+
+    public static long findCountAircraftWithModelAirbus(Airport airport, String model) {
+        //TODO Метод должен вернуть количество самолетов указанной модели.
+        // подходят те самолеты, у которых name начинается со строки model
+
+        return airport.getAllAircrafts().stream().filter((a -> a.getModel().contains(model))).count();
+    }
+
+    public static Map<String, Integer> findMapCountParkedAircraftByTerminalName(Airport airport) {
+        //TODO Метод должен вернуть словарь с количеством припаркованных самолетов в каждом терминале.
+        List<String> listNameAircraft = airport.getTerminals().stream().map(Terminal::getName).toList();
+        List<Integer> listCountAircraft = airport.getTerminals().stream().map(countAircraft -> Math.toIntExact(countAircraft.getParkedAircrafts().size())).toList();
+
+        return IntStream.range(0,listNameAircraft.size()).boxed().collect(Collectors.toMap(
+                listNameAircraft::get,
+                listCountAircraft::get,
+                Integer::sum,
+                HashMap::new
+        ));
+
+
+
+    }
+
+    public static List<Flight> findFlightsLeavingInTheNextHours(Airport airport, int hours) {
+        //TODO Метод должен вернуть список отправляющихся рейсов в ближайшее количество часов.
+
+
+
+        return airport.getTerminals().stream().flatMap(terminal -> terminal.getFlights().stream()).filter(flight -> flight.getDate().compareTo(Instant.now().plus(hours, ChronoUnit.HOURS)) < 0 && flight.getDate().compareTo(Instant.now()) > 0 && flight.getType() == Flight.Type.DEPARTURE).toList();
+    }
+    public static Optional<Flight> findFirstFlightArriveToTerminal(Airport airport, String terminalName) {
+        //TODO Найти ближайший прилет в указанный терминал.
+
+
+
+        var findedArrive = airport.getTerminals().stream().filter(terminal -> terminal.getName().compareTo(terminalName) == 0).flatMap(terminal -> terminal.getFlights().stream()).filter(flight -> flight.getDate().compareTo(Instant.now()) > 0 && flight.getType() == Flight.Type.ARRIVAL).toList();
+        if (!findedArrive.isEmpty()) {
+            return Optional.ofNullable(findedArrive.get(0));
+        } else {
+            return Optional.empty();
+        }
+
+    }
+    }

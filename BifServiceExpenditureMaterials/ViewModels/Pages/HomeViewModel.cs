@@ -1,4 +1,5 @@
-﻿using BifServiceExpenditureMaterials.Views.Windows;
+﻿using BifServiceExpenditureMaterials.Forms;
+using BifServiceExpenditureMaterials.Views.Windows;
 using CommunityToolkit.Mvvm.Input;
 
 namespace BifServiceExpenditureMaterials.ViewModels.Pages
@@ -8,7 +9,7 @@ namespace BifServiceExpenditureMaterials.ViewModels.Pages
         [RelayCommand]
         public async Task PrintButton_Click()
         {
-            MainWindow.window.Navigate(typeof());
+            MainWindow.window.Navigate(typeof(FormPrint));
         }
     }
 }

@@ -11,6 +11,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using BifServiceExpenditureMaterials.ViewModels.Windows;
 
 namespace BifServiceExpenditureMaterials.Forms
 {
@@ -19,9 +20,15 @@ namespace BifServiceExpenditureMaterials.Forms
     /// </summary>
     public partial class FormPrint : Window
     {
-        public FormPrint()
+
+        public FormPrintViewModel ViewModel;
+
+        public FormPrint(FormPrintViewModel ViewModel)
         {
             InitializeComponent();
+            DataContext = this;
+            this.ViewModel = ViewModel;
         }
+
     }
 }

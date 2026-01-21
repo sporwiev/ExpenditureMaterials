@@ -4,13 +4,46 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:BifServiceExpenditureMaterials.Forms"
+        xmlns:vm="clr-namespace:BifServiceExpenditureMaterials.ViewModels.Windows"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        d:DataContext="{d:DesignInstance vm:FormPrintViewModel,IsDesignTimeCreatable=True}"
         mc:Ignorable="d"
         WindowStyle="None">
     <Grid>
-        <StackPanel>
-            <TextBlock Text="Период"/>
-        </StackPanel>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="40"/>
+        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Период от" Grid.Row="0" Margin="10"/>
+            <Border Grid.ColumnSpan="3" Grid.Row="1" Background="LightGray" CornerRadius="10"></Border>
+            <ComboBox Grid.Row="1" Grid.Column="0" Panel.ZIndex="1" ItemsSource="{Binding ViewModel.DayComboBox}" SelectedValue="{Binding ViewModel.SelectedDayBeforeComboBox,Mode=TwoWay}" Margin="10" Width="100"/>
+            <ComboBox Grid.Row="1" Grid.Column="1" Panel.ZIndex="1" ItemsSource="{Binding ViewModel.MonthComboBox}" SelectedValue="{Binding ViewModel.SelectedMonthBeforeComboBox,Mode=TwoWay}" Margin="10" Width="100"/>
+            <ComboBox Grid.Row="1" Grid.Column="2" Panel.ZIndex="1" ItemsSource="{Binding ViewModel.YearComboBox}" SelectedValue="{Binding ViewModel.SelectedYearBeforeComboBox,Mode=TwoWay}" Margin="10" Width="100"/>
+
+            <TextBlock Text="Период до" Grid.Column="4" Margin="10"/>
+            <Border Grid.ColumnSpan="3" Grid.Column="4" Grid.Row="1" Background="LightGray" CornerRadius="10"></Border>
+            <ComboBox Grid.Row="1" Grid.Column="4" ItemsSource="{Binding ViewModel.DayComboBox}" SelectedValue="{Binding ViewModel.SelectedDayBeforeComboBox,Mode=TwoWay}" Margin="10" Width="100"/>
+            <ComboBox Grid.Row="1" Grid.Column="5" ItemsSource="{Binding ViewModel.MonthComboBox}" SelectedValue="{Binding ViewModel.SelectedMonthBeforeComboBox,Mode=TwoWay}" Margin="10" Width="100"/>
+            <ComboBox Grid.Row="1" Grid.Column="6" ItemsSource="{Binding ViewModel.YearComboBox}" SelectedValue="{Binding ViewModel.SelectedYearBeforeComboBox,Mode=TwoWay}" Margin="10" Width="100"/>
+            
+        </Grid>
+        <ListBox Height="500" Margin="10" ItemsSource="{Binding ViewModel.EnterListBox}"></ListBox>
+        
     </Grid>
 
 </Window>
