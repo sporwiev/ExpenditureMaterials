@@ -9,7 +9,7 @@ namespace BifServiceExpenditureMaterials.Forms
     /// <summary>
     /// Форма добавления новой машины в базу данных.
     /// </summary>
-    public partial class FormAddMachine : Window
+    public partial class FormAddMachine : Wpf.Ui.Controls.FluentWindow
     {
         public FormAddMachine()
         {

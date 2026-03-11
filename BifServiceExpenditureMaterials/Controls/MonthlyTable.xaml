@@ -156,22 +156,69 @@ RenderTransformOrigin="0,0">
 
                 </Border>
             </Canvas>
-            <Canvas  x:Name="SelectionPanelOption" Width="300" Height="200" RenderTransformOrigin="0,0">
+            <!-- Всплывающая панель действий над ячейкой -->
+            <Canvas x:Name="SelectionPanelOption" Width="220" Height="Auto" RenderTransformOrigin="0,0">
                 <Canvas.LayoutTransform>
                     <ScaleTransform x:Name="PanelOptionScale" ScaleX="1" ScaleY="1"/>
                 </Canvas.LayoutTransform>
                 <StackPanel>
-                    <Border Background="CornflowerBlue" >
+                    <Border Background="#1A237E" CornerRadius="8" Padding="0,0,0,8">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="3" Opacity="0.25"/>
+                        </Border.Effect>
                         <StackPanel>
-                            <TextBlock Text="Машина" FontSize="30" x:Name="nammachine"></TextBlock>
-                            <Button Content="ТО" Width="300" Click="TO_Click"/>
-                            <Button Content="Долив" Width="300" Click="Dol_Click"/>
-                            <Button Content="Копировать" Width="300" Click="Copy_Click"/>
-                            <Button Content="Вставить" Width="300" Click="Insert_Click" x:Name="InsertBtn"/>
+                            <!-- Заголовок: название машины -->
+                            <Border Background="#283593" CornerRadius="8,8,0,0" Padding="10,6">
+                                <TextBlock x:Name="nammachine" Text="Машина"
+                                           FontSize="16" FontWeight="SemiBold"
+                                           Foreground="White" TextWrapping="Wrap"/>
+                            </Border>
+                            <!-- Кнопка ТО (красная тема) -->
+                            <Button Content="ТО" Width="220" Height="36" Margin="0,8,0,0"
+                                    Background="#C62828" Foreground="White"
+                                    FontWeight="Bold" BorderThickness="0"
+                                    Click="TO_Click">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="4"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
+                            <!-- Кнопка Долив (зелёная тема) -->
+                            <Button Content="Долив" Width="220" Height="36" Margin="0,4,0,0"
+                                    Background="#2E7D32" Foreground="White"
+                                    FontWeight="Bold" BorderThickness="0"
+                                    Click="Dol_Click">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="4"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
+                            <!-- Кнопка Копировать -->
+                            <Button Content="Копировать" Width="220" Height="32" Margin="0,4,0,0"
+                                    Background="#37474F" Foreground="White"
+                                    BorderThickness="0" Click="Copy_Click">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="4"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
+                            <!-- Кнопка Вставить -->
+                            <Button x:Name="InsertBtn" Content="Вставить" Width="220" Height="32" Margin="0,4,0,0"
+                                    Background="#37474F" Foreground="White"
+                                    BorderThickness="0" Click="Insert_Click">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="4"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
                         </StackPanel>
                     </Border>
                     <StackPanel.RenderTransform>
-                        <TranslateTransform x:Name="PanelOptionTransform" />
+                        <TranslateTransform x:Name="PanelOptionTransform"/>
                     </StackPanel.RenderTransform>
                 </StackPanel>
             </Canvas>

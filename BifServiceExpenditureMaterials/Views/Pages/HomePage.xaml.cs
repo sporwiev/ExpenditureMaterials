@@ -41,8 +41,6 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             //SearchTextBox.Text = GetSystemUUID();
             Loaded += HomePage_Loaded;
             MainWindow.SizeChangedEvent.AddOwner(typeof(HomePage));
-            
-            SizeChanged += HomePage_SizeChanged;
             //215D5922-38C0-4840-AE4F-88A4C2841B36
         }
         public HomePage(HomeViewModel viewModel)
@@ -51,12 +49,6 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             DataContext = this;
             this.ViewModel = viewModel;
         }
-
-        private void HomePage_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            montableGl.Height = this.Height / 3;
-        }
-
 
         //private void InitHub()
         //{
