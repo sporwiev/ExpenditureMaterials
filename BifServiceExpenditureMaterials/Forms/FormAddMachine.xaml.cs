@@ -1,26 +1,13 @@
-﻿using BifServiceExpenditureMaterials.Database;
-using BifServiceExpenditureMaterials.Helpers;
-using BifServiceExpenditureMaterials.Models;
-using BifServiceExpenditureMaterials.Views.Pages;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
-using System.Windows.Shapes;
+using BifServiceExpenditureMaterials.Helpers;
+using BifServiceExpenditureMaterials.Models;
 
 namespace BifServiceExpenditureMaterials.Forms
 {
     /// <summary>
-    /// Логика взаимодействия для FormAddMachine.xaml
+    /// Форма добавления новой машины в базу данных.
     /// </summary>
     public partial class FormAddMachine : Window
     {
@@ -29,37 +16,57 @@ namespace BifServiceExpenditureMaterials.Forms
             InitializeComponent();
         }
 
+        /// <summary>
+        /// Заполняет ComboBox годов при загрузке формы.
+        /// Диапазон: от 2 лет назад до 5 лет вперёд относительно текущего года.
+        /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            var list = new List<string>()
-            {
-                "2025",
-                "2024",
-                "2026",
-                "2027",
-                "2028",
-                "2029",
-            };
-            YearComboBox.ItemsSource = list;
+            var currentYear = DateTime.Now.Year;
+            var years = new List<string>();
 
+            // Формируем список годов динамически
+            for (int year = currentYear - 2; year <= currentYear + 5; year++)
+                years.Add(year.ToString());
+
+            YearComboBox.ItemsSource = years;
+            // По умолчанию выбираем текущий год
+            YearComboBox.SelectedItem = currentYear.ToString();
         }
 
+        /// <summary>
+        /// Сохраняет новую машину в базу данных и закрывает форму.
+        /// Отправляет уведомление через SignalR о добавлении.
+        /// </summary>
         private async void Button_Click(object sender, RoutedEventArgs e)
         {
-            
+            var machineCode = MachineTextBox.Text?.Trim();
+
+            // Проверяем, что код машины не пустой
+            if (string.IsNullOrEmpty(machineCode))
             {
-                machine machine = new machine();
-                machine.Год = int.TryParse(YearComboBox.Text, out var year) ? year : DateTime.Now.Year;
-                machine.Code = MachineTextBox.Text;
-                await App.dBcontext.machine.AddAsync(machine);
-                await App.dBcontext.SaveChangesAsync();
-                //await App.dBcontext.DisposeAsync();
+                MessageBox.Show("Введите код машины.", "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            await SignalRClient.SendNotificationAsync($"0x03|{MachineTextBox.Text} Машина добавлена|Добавление");
-            //HomePage._home.UpdateData(activeTab);
+
+            var newMachine = new machine
+            {
+                Code = machineCode,
+                Год = int.TryParse(YearComboBox.Text, out var year) ? year : DateTime.Now.Year
+            };
+
+            await App.dBcontext.machine.AddAsync(newMachine);
+            await App.dBcontext.SaveChangesAsync();
+
+            // Уведомляем других клиентов через SignalR
+            await SignalRClient.SendNotificationAsync($"0x03|{machineCode} Машина добавлена|Добавление");
+
             Close();
         }
 
+        /// <summary>
+        /// Закрывает форму без сохранения.
+        /// </summary>
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
             Close();

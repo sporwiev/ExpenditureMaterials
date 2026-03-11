@@ -1,24 +1,32 @@
-﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BifServiceExpenditureMaterials.Helpers
 {
-    class PatternSystemIndeficators
+    /// <summary>
+    /// Вспомогательный класс для сопоставления системных идентификаторов (GUID) с именами пользователей.
+    /// Используется для определения текущего пользователя по уникальному идентификатору системы.
+    /// </summary>
+    internal static class PatternSystemIndicators
     {
-        public static string GetUser(string key)
+        /// <summary>
+        /// Статический словарь: GUID системы → имя пользователя.
+        /// Создаётся один раз для избежания повторных аллокаций.
+        /// </summary>
+        private static readonly Dictionary<string, string> UserKeyMap = new()
         {
-            Dictionary<string, string> userkey = new Dictionary<string, string>()
-            {
-                ["0FC0AA46-82C5-11E9-A784-98FA9B2496C2"] = "Андрей Пятых",
-                ["215D5922-38C0-4840-AE4F-88A4C2841B36"] = "Администратор",
-                [""] = "Ольга Растворова",
-                
+            ["0FC0AA46-82C5-11E9-A784-98FA9B2496C2"] = "Андрей Пятых",
+            ["215D5922-38C0-4840-AE4F-88A4C2841B36"] = "Администратор",
+            [""]                                      = "Ольга Растворова",
+        };
 
-            };
-            return userkey[key];
+        /// <summary>
+        /// Возвращает имя пользователя по GUID системы.
+        /// </summary>
+        /// <param name="key">GUID системы пользователя.</param>
+        /// <returns>Имя пользователя, или <c>null</c> если ключ не найден.</returns>
+        public static string? GetUser(string key)
+        {
+            return UserKeyMap.TryGetValue(key, out var name) ? name : null;
         }
     }
 }

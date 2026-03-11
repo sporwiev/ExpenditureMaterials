@@ -1,4 +1,3 @@
-﻿using BifServiceExpenditureMaterials.Views.Pages;
 using BifServiceExpenditureMaterials.Views.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -7,13 +6,14 @@ using Wpf.Ui;
 namespace BifServiceExpenditureMaterials.Services
 {
     /// <summary>
-    /// Managed host of the application.
+    /// Хостируемый сервис приложения.
+    /// Управляет жизненным циклом: при старте открывает главное окно,
+    /// при завершении — корректно останавливает хост.
     /// </summary>
     public class ApplicationHostService : IHostedService
     {
         private readonly IServiceProvider _serviceProvider;
-
-        private INavigationWindow _navigationWindow;
+        private INavigationWindow? _navigationWindow;
 
         public ApplicationHostService(IServiceProvider serviceProvider)
         {
@@ -21,35 +21,29 @@ namespace BifServiceExpenditureMaterials.Services
         }
 
         /// <summary>
-        /// Triggered when the application host is ready to start the service.
+        /// Запускается, когда хост готов к работе — открывает главное окно навигации.
         /// </summary>
-        /// <param name="cancellationToken">Indicates that the start process has been aborted.</param>
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             await HandleActivationAsync();
         }
 
         /// <summary>
-        /// Triggered when the application host is performing a graceful shutdown.
+        /// Вызывается при завершении приложения. Выполняет корректное завершение работы.
         /// </summary>
-        /// <param name="cancellationToken">Indicates that the shutdown process should no longer be graceful.</param>
-        public async Task StopAsync(CancellationToken cancellationToken)
-        {
-            await Task.CompletedTask;
-        }
+        public Task StopAsync(CancellationToken cancellationToken)
+            => Task.CompletedTask;
 
         /// <summary>
-        /// Creates main window during activation.
+        /// Создаёт и показывает главное окно, если оно ещё не открыто.
+        /// После открытия навигирует на HomePage.
         /// </summary>
         private async Task HandleActivationAsync()
         {
             if (!Application.Current.Windows.OfType<MainWindow>().Any())
             {
-                _navigationWindow = (
-                    _serviceProvider.GetService(typeof(INavigationWindow)) as INavigationWindow
-                )!;
+                _navigationWindow = (_serviceProvider.GetService(typeof(INavigationWindow)) as INavigationWindow)!;
                 _navigationWindow!.ShowWindow();
-
                 _navigationWindow.Navigate(typeof(Views.Pages.HomePage));
             }
 

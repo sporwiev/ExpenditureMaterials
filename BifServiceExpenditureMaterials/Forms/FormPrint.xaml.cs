@@ -1,40 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using BifServiceExpenditureMaterials.ViewModels.Windows;
 
 namespace BifServiceExpenditureMaterials.Forms
 {
     /// <summary>
-    /// Логика взаимодействия для FormPrint.xaml
+    /// Форма печати документа.
+    /// Позволяет выбрать период (дата от/до) и вывести список записей на печать.
     /// </summary>
     public partial class FormPrint : Window
     {
+        /// <summary>ViewModel формы с логикой фильтрации и данными для печати.</summary>
+        public FormPrintViewModel? ViewModel { get; private set; }
 
-        public FormPrintViewModel? ViewModel;
-
-        public FormPrint(FormPrintViewModel ViewModel)
+        /// <summary>
+        /// Конструктор с явной передачей ViewModel.
+        /// Используется при открытии формы с предустановленными параметрами.
+        /// </summary>
+        /// <param name="viewModel">Готовая ViewModel с заполненными фильтрами.</param>
+        public FormPrint(FormPrintViewModel viewModel)
         {
             InitializeComponent();
-            DataContext = this;
-            this.ViewModel = ViewModel;
-            MessageBox.Show(ViewModel.DayComboBox.Count.ToString());
+            ViewModel = viewModel;
+            DataContext = ViewModel;
         }
+
+        /// <summary>
+        /// Конструктор без параметров — ViewModel создаётся автоматически с настройками по умолчанию.
+        /// </summary>
         public FormPrint()
         {
             InitializeComponent();
+            ViewModel = new FormPrintViewModel();
+            DataContext = ViewModel;
         }
-        
-
     }
 }

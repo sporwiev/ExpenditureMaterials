@@ -1,56 +1,85 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
 
 namespace BifServiceExpenditureMaterials.Helpers
 {
+    /// <summary>
+    /// Вспомогательный статический класс с утилитами для работы с месяцами, путями и ячейками.
+    /// </summary>
     public static class Other
     {
-        public static int GetMouthNumber(string mouth)
+        // ─── Статические словари (создаются один раз, переиспользуются) ───────────
+
+        /// <summary>
+        /// Словарь «название месяца → номер» для быстрого преобразования.
+        /// </summary>
+        private static readonly Dictionary<string, int> MonthNameToNumber = new()
         {
-            Dictionary<string, int> mouths = new Dictionary<string, int>()
-            {
-                ["Янаврь"] =   01,
-                ["Февраль"] =  02,
-                ["Март"] =     03,
-                ["Апрель"] =   04,
-                ["Май"] =      05,
-                ["Июнь"] =     06,
-                ["Июль"] =     07,
-                ["Август"] =   08,
-                ["Сентябрь"] = 09,
-                ["Октябрь"] =  10,
-                ["Ноябрь"] =   11,
-                ["Декабрь"] =  12
-            };
-            return mouths[mouth];
+            ["Январь"]   = 1,
+            ["Февраль"]  = 2,
+            ["Март"]     = 3,
+            ["Апрель"]   = 4,
+            ["Май"]      = 5,
+            ["Июнь"]     = 6,
+            ["Июль"]     = 7,
+            ["Август"]   = 8,
+            ["Сентябрь"] = 9,
+            ["Октябрь"]  = 10,
+            ["Ноябрь"]   = 11,
+            ["Декабрь"]  = 12,
+        };
+
+        /// <summary>
+        /// Словарь «номер месяца → название» для быстрого преобразования.
+        /// </summary>
+        private static readonly Dictionary<int, string> MonthNumberToName = new()
+        {
+            [1]  = "Январь",
+            [2]  = "Февраль",
+            [3]  = "Март",
+            [4]  = "Апрель",
+            [5]  = "Май",
+            [6]  = "Июнь",
+            [7]  = "Июль",
+            [8]  = "Август",
+            [9]  = "Сентябрь",
+            [10] = "Октябрь",
+            [11] = "Ноябрь",
+            [12] = "Декабрь",
+        };
+
+        // ─── Публичные методы ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Преобразует название месяца в его порядковый номер (1–12).
+        /// </summary>
+        /// <param name="monthName">Название месяца на русском языке.</param>
+        /// <returns>Номер месяца (1–12).</returns>
+        public static int GetMouthNumber(string monthName)
+        {
+            return MonthNameToNumber[monthName];
         }
+
+        /// <summary>
+        /// Преобразует порядковый номер месяца в его название на русском языке.
+        /// </summary>
+        /// <param name="number">Номер месяца (1–12).</param>
+        /// <returns>Название месяца на русском языке.</returns>
         public static string GetMouthNumber(int number)
         {
-            Dictionary<int, string> mouths = new Dictionary<int, string>()
-            {
-                [01] = "Янаврь",
-                [02] = "Февраль",
-                [03] = "Март",
-                [04] = "Апрель",
-                [05] = "Май",
-                [06] = "Июнь",
-                [07] = "Июль",
-                [08] = "Август",
-                [09] = "Сентябрь",
-                [10] = "Октябрь" ,
-                [11] = "Ноябрь",
-                [12] = "Декабрь"
-            };
-            return mouths[number];
+            return MonthNumberToName[number];
         }
-        public static List<string> GetAllMoths()
+
+        /// <summary>
+        /// Возвращает полный список названий всех месяцев (первый элемент — пустая строка-заглушка).
+        /// </summary>
+        public static List<string> GetAllMonths()
         {
-            return new List<string>() {
+            return new List<string>
+            {
                 "",
-                "Янаврь",
+                "Январь",
                 "Февраль",
                 "Март",
                 "Апрель",
@@ -59,42 +88,76 @@ namespace BifServiceExpenditureMaterials.Helpers
                 "Июль",
                 "Август",
                 "Сентябрь",
-                "Октябрь" ,
+                "Октябрь",
                 "Ноябрь",
-                "Декабрь"
+                "Декабрь",
             };
         }
-        private static List<string> getDayList()
+
+        /// <summary>
+        /// Устаревший псевдоним для <see cref="GetAllMonths"/>.
+        /// Оставлен для обратной совместимости.
+        /// </summary>
+        [Obsolete("Используйте GetAllMonths(). Этот метод будет удалён в следующей версии.")]
+        public static List<string> GetAllMoths() => GetAllMonths();
+
+        /// <summary>
+        /// Возвращает список дней месяца (1–31) в виде строк для ComboBox.
+        /// </summary>
+        public static List<string> GetDayList()
         {
-            List<string> list = new List<string>();
-            for (int i = 1; i < 32; i++)
+            var list = new List<string>(31);
+            for (int i = 1; i <= 31; i++)
                 list.Add(i.ToString());
             return list;
         }
-        private static List<string> getYearList()
+
+        /// <summary>
+        /// Возвращает список годов от 2024 до 2029 в виде строк для ComboBox.
+        /// </summary>
+        public static List<string> GetYearList()
         {
-            List<string> list = new List<string>();
-            for (int i = 2024; i < 2030; i++)
+            var list = new List<string>();
+            for (int i = 2024; i <= 2029; i++)
                 list.Add(i.ToString());
             return list;
         }
+
+        /// <summary>
+        /// Строит путь к файлу внутри директории приложения.
+        /// Находит корневую папку «BifServiceExpenditureMaterials» и добавляет к ней имя файла.
+        /// </summary>
+        /// <param name="name">Имя файла или относительный путь внутри папки проекта.</param>
+        /// <returns>Полный путь к файлу.</returns>
         public static string GetPathProject(string name)
         {
-            string path = "";
-            foreach (var item in Environment.CurrentDirectory.Split("\\"))
-            {
-                path += item + "\\";
-                if(item.ToUpper() == "BifServiceExpenditureMaterials")
-                {
-                    return path + "\\" + name;
-                }
+            var parts = Environment.CurrentDirectory.Split(Path.DirectorySeparatorChar);
+            var result = "";
 
+            foreach (var part in parts)
+            {
+                result = Path.Combine(result, part);
+                if (string.Equals(part, "BifServiceExpenditureMaterials", StringComparison.OrdinalIgnoreCase))
+                    return Path.Combine(result, name);
             }
-            return path;
+
+            // Если папка не найдена — вернуть путь относительно текущей директории
+            return Path.Combine(Environment.CurrentDirectory, name);
         }
-        public static int GetValueInYacheyka(string yacheyka)
+
+        /// <summary>
+        /// Извлекает числовое значение из строки ячейки формата «Префикс:Число».
+        /// Например, «МАШ-001:15» → 15.
+        /// </summary>
+        /// <param name="cellValue">Значение ячейки в формате «...Значение:Число».</param>
+        /// <returns>Числовое значение после последнего двоеточия.</returns>
+        public static int GetValueInYacheyka(string cellValue)
         {
-            return Convert.ToInt32(yacheyka.Split(":").ToList().Last());
+            if (string.IsNullOrEmpty(cellValue))
+                return 0;
+
+            var parts = cellValue.Split(':');
+            return int.TryParse(parts[^1], out var result) ? result : 0;
         }
     }
 }

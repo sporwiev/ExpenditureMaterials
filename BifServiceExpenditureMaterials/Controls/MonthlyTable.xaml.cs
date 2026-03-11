@@ -23,20 +23,35 @@ using b = System.Windows.Controls.TextBlock;
 namespace BifServiceExpenditureMaterials.Controls
 {
     /// <summary>
-    /// Логика взаимодействия для MonthlyTable.xaml
+    /// Логика взаимодействия для MonthlyTable.xaml.
+    /// Отображает месячную таблицу расходов материалов:
+    /// строки — машины, столбцы — дни месяца (1–31).
     /// </summary>
     public partial class MonthlyTable : UserControl
     {
+        /// <summary>Ссылка на WPF DataGrid для внешнего доступа.</summary>
         public System.Windows.Controls.DataGrid? Datagrid { get; set; }
+
+        /// <summary>Внутренняя таблица данных, привязанная к DataGrid.</summary>
         private DataTable _table = new();
-        private bool isRightMouseDown = false;
-        private const double MinScale = 0.5;  // Минимальный масштаб (50%)
-        private const double MaxScale = 3.0;  // Максимальный масштаб (300%)
+
+        // Константы масштабирования
+        private const double MinScale  = 0.5; // Минимальный масштаб (50%)
+        private const double MaxScale  = 3.0; // Максимальный масштаб (300%)
         private const double ScaleStep = 0.1; // Шаг изменения масштаба при прокрутке
+
+        /// <summary>Флаг: выполняется ли операция копирования ячейки.</summary>
         public static bool isCopy = false;
+
+        /// <summary>Значение скопированной ячейки (номер ТО/доливки).</summary>
         public static string CopiedMachine = "";
+
+        /// <summary>Глобальная ссылка на текущий экземпляр таблицы (для статических вызовов).</summary>
         public static MonthlyTable MonTable;
+
+        /// <summary>Цвет фона скопированной ячейки (для вставки с сохранением типа).</summary>
         private SolidColorBrush isCopiedBrush = new SolidColorBrush();
+
         public MonthlyTable()
         {
             InitializeComponent();
@@ -58,6 +73,10 @@ namespace BifServiceExpenditureMaterials.Controls
         //    MaterialsGrid.Cursor = Cursors.Arrow;
         //    e.Handled = true;
         //}
+        /// <summary>
+        /// Сериализует текущее содержимое таблицы в JSON-строку.
+        /// Используется при сохранении проекта.
+        /// </summary>
         public string SerializeTableData()
         {
             var rows = _table.AsEnumerable()
@@ -67,6 +86,10 @@ namespace BifServiceExpenditureMaterials.Controls
 
             return JsonConvert.SerializeObject(rows);
         }
+        /// <summary>
+        /// Десериализует JSON-строку и восстанавливает данные таблицы.
+        /// Используется при загрузке сохранённого проекта.
+        /// </summary>
         public void DeserializeTableData(string json)
         {
             var rows = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(json);
@@ -142,6 +165,10 @@ namespace BifServiceExpenditureMaterials.Controls
 
         //    e.Handled = true;
         //}
+        /// <summary>
+        /// Строит таблицу: создаёт столбцы (Дата/Машины + дни 1–31)
+        /// и добавляет строки по количеству машин из базы данных + 3 запасные.
+        /// </summary>
         public void BuildTable()
         {
             _table.Clear();
@@ -349,6 +376,9 @@ namespace BifServiceExpenditureMaterials.Controls
             return presenter?.ItemContainerGenerator.ContainerFromIndex(columnIndex) as DataGridCell;
         }
 
+        /// <summary>
+        /// Рекурсивно ищет первый дочерний элемент заданного типа в визуальном дереве WPF.
+        /// </summary>
         private static T FindVisualChild<T>(DependencyObject obj) where T : DependencyObject
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
@@ -581,15 +611,15 @@ namespace BifServiceExpenditureMaterials.Controls
                     try
                     {
                         DataGridCell cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(columnIndex);
-                        cell.VerticalContentAlignment = VerticalAlignment.Center;
-                        cell.HorizontalContentAlignment = HorizontalAlignment.Center;
-                        cell.Foreground = Brushes.Black;
                         if (cell != null)
                         {
+                            cell.VerticalContentAlignment   = VerticalAlignment.Center;
+                            cell.HorizontalContentAlignment = HorizontalAlignment.Center;
+                            cell.Foreground = Brushes.Black;
 
                             if (cell.Content is System.Windows.Controls.TextBlock tb)
                             {
-                                tb.TextAlignment = TextAlignment.Center;
+                                tb.TextAlignment   = TextAlignment.Center;
                                 tb.VerticalAlignment = VerticalAlignment.Center;
                                 tb.Text = newValue;
                             }
@@ -601,13 +631,14 @@ namespace BifServiceExpenditureMaterials.Controls
                     }
                     catch (Exception ex)
                     {
-
+                        // Ячейка может быть виртуализирована и недоступна — игнорируем
+                        System.Diagnostics.Debug.WriteLine($"[MonthlyTable] SetCellValue: {ex.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-
+                System.Diagnostics.Debug.WriteLine($"[MonthlyTable] SetCellValue (внешний): {ex.Message}");
             }
         }
         public void SetCellBackground(System.Windows.Controls.DataGrid dataGrid, int rowIndex, int columnIndex, string nomer)
@@ -721,23 +752,12 @@ namespace BifServiceExpenditureMaterials.Controls
             return null;
         }
 
-        // Вспомогательный метод для поиска визуального ребенка нужного типа
+        /// <summary>
+        /// Псевдоним для <see cref="FindVisualChild{T}"/>.
+        /// Ищет первый дочерний элемент заданного типа в визуальном дереве.
+        /// </summary>
         public static T NewFindVisualChild<T>(DependencyObject obj) where T : DependencyObject
-        {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
-            {
-                DependencyObject child = VisualTreeHelper.GetChild(obj, i);
-                if (child != null && child is T)
-                    return (T)child;
-                else
-                {
-                    T childOfChild = FindVisualChild<T>(child);
-                    if (childOfChild != null)
-                        return childOfChild;
-                }
-            }
-            return null;
-        }
+            => FindVisualChild<T>(obj);
         private async void Dol_Click(object sender, RoutedEventArgs e)
         {
             if (MaterialsGrid.SelectedCells.Count == 0) return;
@@ -794,6 +814,10 @@ namespace BifServiceExpenditureMaterials.Controls
             }
 
         }
+        /// <summary>
+        /// Загружает данные машин из базы данных и заполняет первый столбец таблицы.
+        /// Отображаются только машины текущего года.
+        /// </summary>
         public async void GetData()
         {
             await Task.Run(async () =>

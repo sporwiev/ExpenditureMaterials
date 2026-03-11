@@ -1,127 +1,178 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Text;
+using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
-using BifServiceExpenditureMaterials.Views.Pages;
-using BifServiceExpenditureMaterials.Views.Windows;
 
 namespace BifServiceExpenditureMaterials.Helpers
 {
-    class Networks
+    /// <summary>
+    /// Вспомогательный класс для работы с сетью:
+    /// получение IP-адреса, автоматическое переподключение к Wi-Fi.
+    /// </summary>
+    internal static class Networks
     {
-        private static string wifiProfileName = "BIF_5G";
-        private static bool reconnecting = false;
-        private static bool checking = false;
+        /// <summary>Название Wi-Fi профиля для переподключения.</summary>
+        private const string WifiProfileName = "BIF_5G";
 
+        /// <summary>Флаг — выполняется ли сейчас процесс переподключения.</summary>
+        private static bool _reconnecting = false;
+
+        /// <summary>Флаг — выполняется ли мониторинг состояния сети.</summary>
+        private static bool _checking = false;
+
+        /// <summary>
+        /// Возвращает локальный путь до папки приложения (без имени директории BifServiceExpenditureMaterials).
+        /// </summary>
         public static string GetLocalPath()
         {
             var path = "";
-            foreach(var directory in Environment.CurrentDirectory.Split('\\'))
+            foreach (var directory in Environment.CurrentDirectory.Split('\\'))
             {
                 if (directory == "BifServiceExpenditureMaterials") break;
-               path += directory + '\\';
+                path += directory + '\\';
             }
-            path = path.Substring(0, path.Length - 1);
-            return path;
-        }
-        public static string GetIp()
-        {
-            return Dns.GetHostEntry(Dns.GetHostName()).AddressList.FirstOrDefault(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork).ToString() ?? null;
+            // Убираем финальный слеш
+            return path.TrimEnd('\\');
         }
 
+        /// <summary>
+        /// Возвращает первый IPv4-адрес текущей машины.
+        /// Возвращает <c>null</c>, если адрес не найден.
+        /// </summary>
+        public static string? GetIp()
+        {
+            return Dns
+                .GetHostEntry(Dns.GetHostName())
+                .AddressList
+                .FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork)
+                ?.ToString();
+        }
+
+        /// <summary>
+        /// Запускает мониторинг сетевого соединения.
+        /// При потере сети — начинает попытки переподключения к Wi-Fi-профилю.
+        /// </summary>
         public static void ConnectNetwork()
         {
-            NetworkChange.NetworkAvailabilityChanged += NetworkChange_NetworkAvailabilityChanged;
+            NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
+
             if (!NetworkInterface.GetIsNetworkAvailable())
             {
-                //Console.WriteLine("Сеть отключена. Попытка переподключения...");
-                if (!reconnecting)
+                // Сеть недоступна — начинаем переподключение
+                if (!_reconnecting)
                 {
-                    reconnecting = true;
-                    checking = false;
-                    Task.Run(() => ReconnectWifi());
+                    _reconnecting = true;
+                    _checking = false;
+                    Task.Run(ReconnectWifi);
                 }
             }
             else
             {
-                //Console.WriteLine("Сеть доступна.");
-                reconnecting = false;
-                checking = true;
-                Task.Run(() => ChechingWifi());
-
+                // Сеть доступна — запускаем мониторинг
+                _reconnecting = false;
+                _checking = true;
+                Task.Run(MonitorWifi);
             }
-
         }
 
-        private static void NetworkChange_NetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
+        /// <summary>
+        /// Обработчик изменения доступности сети.
+        /// Вызывается системой при подключении/отключении сетевых интерфейсов.
+        /// </summary>
+        private static void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
         {
-            MessageBox.Show("");
+            if (e.IsAvailable)
+            {
+                // Сеть восстановлена — останавливаем переподключение
+                _reconnecting = false;
+                _checking = true;
+                Task.Run(MonitorWifi);
+            }
+            else
+            {
+                // Сеть пропала — начинаем переподключение
+                _checking = false;
+                if (!_reconnecting)
+                {
+                    _reconnecting = true;
+                    Task.Run(ReconnectWifi);
+                }
+            }
         }
 
-
-        private static void ChechingWifi() 
+        /// <summary>
+        /// Мониторинг состояния Wi-Fi-соединения.
+        /// При обнаружении разрыва переключается на режим переподключения.
+        /// </summary>
+        private static void MonitorWifi()
         {
-             while (checking)
-             {
-                 if (NetworkInterface.GetIsNetworkAvailable())
-                 {
+            while (_checking)
+            {
+                // Пауза между проверками — не занимаем CPU бесполезно
+                Thread.Sleep(3000);
 
-                     reconnecting = true;
-                     ReconnectWifi();
-                     checking = false;
-                 }
-                
-             }
+                if (!NetworkInterface.GetIsNetworkAvailable())
+                {
+                    // Сеть пропала — переходим к переподключению
+                    _checking = false;
+                    _reconnecting = true;
+                    ReconnectWifi();
+                }
+            }
         }
+
+        /// <summary>
+        /// Попытки переподключения к Wi-Fi-профилю через команду netsh.
+        /// Повторяет каждые 5 секунд до успешного подключения.
+        /// </summary>
         private static void ReconnectWifi()
         {
-
-                // Пример с netsh - переподключение по профилю Wi-Fi
-                while (reconnecting)
+            while (_reconnecting)
+            {
+                try
                 {
-                    try
+                    // Подключаемся к сохранённому Wi-Fi-профилю
+                    var psi = new ProcessStartInfo("netsh", $"wlan connect name=\"{WifiProfileName}\"")
                     {
-                        //Console.WriteLine("Выполняется подключение к Wi-Fi...");
-                        var psi = new ProcessStartInfo("netsh", $"wlan connect name=\"{wifiProfileName}\"")
-                        {
-                            CreateNoWindow = true,
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true
-                        };
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
 
-                        using (var process = Process.Start(psi))
-                        {
-                            process.WaitForExit(10000);
-                            string output = process.StandardOutput.ReadToEnd();
-                            string error = process.StandardError.ReadToEnd();
-                            //Console.WriteLine(output);
-                            //if (!string.IsNullOrEmpty(error))
-                            //Console.WriteLine("Ошибка: " + error);
-                        }
-
-                        // Проверить состояние сети
-                        if (NetworkInterface.GetIsNetworkAvailable())
-                        {
-                            //Console.WriteLine("Сеть восстановлена.");
-                            reconnecting = false;
-                            checking = true;
-                            Task.Run(() => ChechingWifi());
-
-                            break;
-                        }
-                    }
-                    catch (Exception ex)
+                    using var process = Process.Start(psi);
+                    if (process != null)
                     {
-                        //Console.WriteLine("Ошибка переподключения: " + ex.Message);
+                        process.WaitForExit(10_000);
+                        var output = process.StandardOutput.ReadToEnd();
+                        var error = process.StandardError.ReadToEnd();
+
+                        if (!string.IsNullOrEmpty(error))
+                            Debug.WriteLine($"[Networks] netsh ошибка: {error}");
                     }
 
-                    Thread.Sleep(5000); // Подождать перед следующей попыткой
+                    // Проверяем, появилась ли сеть после команды
+                    if (NetworkInterface.GetIsNetworkAvailable())
+                    {
+                        Debug.WriteLine("[Networks] Сеть восстановлена.");
+                        _reconnecting = false;
+                        _checking = true;
+                        Task.Run(MonitorWifi);
+                        break;
+                    }
                 }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Networks] Ошибка переподключения: {ex.Message}");
+                }
+
+                // Ожидаем перед следующей попыткой
+                Thread.Sleep(5000);
+            }
         }
     }
 }
