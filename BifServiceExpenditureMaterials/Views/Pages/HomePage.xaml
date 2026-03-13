@@ -278,12 +278,14 @@
                 <Button Style="{DynamicResource monthButtons}"
                         MouseEnter="Button_MouseEnter" Click="Button_Click">Декабрь</Button>
             </StackPanel>
-
-            <!-- Таблица расхода материалов — заполняет всё доступное пространство -->
-            <controls:MonthlyTable Grid.Row="1" x:Name="montableGl"
+            <Border Grid.Row="1" ScrollViewer.HorizontalScrollBarVisibility="Visible"
+ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True" CornerRadius="60">
+                <!-- Таблица расхода материалов — заполняет всё доступное пространство -->
+                <controls:MonthlyTable Grid.Row="1" x:Name="montableGl"
                                    ScrollViewer.HorizontalScrollBarVisibility="Visible"
                                    ScrollViewer.VerticalScrollBarVisibility="Visible"
                                    ScrollViewer.CanContentScroll="True"/>
+            </Border>
         </Grid>
 
     </Grid>

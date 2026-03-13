@@ -135,16 +135,16 @@ namespace BifServiceExpenditureMaterials.Forms
                 int indexoil = 0;
                 foreach (var item in material.oilCode.Split(","))
                 {
-                    //if ((bool)(App.dBcontext?.Oil?.Where(s => s.Id == material.oil_id).Any()))
-                    //{
-                    //    var oilobject = App.dBcontext?.Oil?.Where(s => s.Id == material.oil_id).Select(s => s.Name).First().Split("_");
-                    //    oil = [[indexoil.ToString()],[oilobject[0],oilobject[1],oilobject[2]]];
-                    //}
-                    //else
-                    //{
-                    //    oil = [[""], ["","",""]];
+                    if ((bool)(App.dBcontext?.Oil?.Where(s => s.Id == material.oil_id).Any()))
+                    {
+                        var oilobject = App.dBcontext?.Oil?.Where(s => s.Id == material.oil_id).Select(s => s.Name).First().Split("_");
+                        oil = [[indexoil.ToString()],[oilobject[0],oilobject[1],oilobject[2]]];
+                    }
+                    else
+                    {
+                        oil = [[""], ["","",""]];
 
-                    //}
+                    }
                     indexoil++;
                 }
                 if ((bool)(App.dBcontext?.Antifreeze?.Where(s => s.Id.ToString() == material.antifreeze_id.ToString()).Any()))
@@ -164,12 +164,7 @@ namespace BifServiceExpenditureMaterials.Forms
                     grease = ["", "", ""];
                 }
 
-                #region Oil
-                foreach (var item in oil)
-                {
-                    MessageBox.Show(item.ToString());
-                }
-                #endregion Oil
+                
                 #region Antifreeze
                 for (int i = 0; i < AntifreezeColorComboBox.Items.Count; i++)
                 {

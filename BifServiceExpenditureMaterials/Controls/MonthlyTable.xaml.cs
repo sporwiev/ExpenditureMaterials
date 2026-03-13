@@ -1,24 +1,16 @@
-﻿using BifServiceExpenditureMaterials.Database;
+﻿using System.Data;
+using System.Diagnostics;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using BifServiceExpenditureMaterials.Forms;
 using BifServiceExpenditureMaterials.Models;
 using BifServiceExpenditureMaterials.Views.Pages;
 using BifServiceExpenditureMaterials.Views.Windows;
 using Newtonsoft.Json;
-
-using System.Data;
-
-
-using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
-
-using System.Windows.Threading;
-
-using a = System.Windows.Controls.DataGridCell;
-using b = System.Windows.Controls.TextBlock;
 
 namespace BifServiceExpenditureMaterials.Controls
 {
@@ -55,7 +47,14 @@ namespace BifServiceExpenditureMaterials.Controls
         public MonthlyTable()
         {
             InitializeComponent();
-            BuildTable();
+            try
+            {
+                BuildTable();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка инициализации таблицы: {ex.Message}");
+            }
             Datagrid = MaterialsGrid;
             MonTable = this;
         }
@@ -171,74 +170,86 @@ namespace BifServiceExpenditureMaterials.Controls
         /// </summary>
         public void BuildTable()
         {
-            _table.Clear();
-            _table.Columns.Clear();
-            _table.Rows.Clear();
-            // Добавляем колонки (0-я — строка/название, остальные 1–31)
-            _table.Columns.Add("Дата\\\nМашины");
-            
-            for (int i = 1; i <= 31; i++)
-                _table.Columns.Add(i.ToString());
-
-            // Добавим 60 строк
-            
+            try
             {
-                var count = App.dBcontext.machine.Count() + 3;
-                for (int row = 0; row < count; row++)
-                {
-                    var newRow = _table.NewRow();
+                _table.Clear();
+                _table.Columns.Clear();
+                _table.Rows.Clear();
 
-                    _table.Rows.Add(newRow);
+                // Добавляем колонки (0-я — строка/название, остальные 1–31)
+                _table.Columns.Add("Дата\\\nМашины");
+                for (int i = 1; i <= 31; i++)
+                    _table.Columns.Add(i.ToString());
+
+                // Количество строк = машины + 3 запасных
+                int machineCount = 0;
+                try
+                {
+                    machineCount = App.dBcontext?.machine?.Count() ?? 0;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[MonthlyTable] Ошибка подсчёта машин: {ex.Message}");
+                }
+
+                var count = machineCount + 3;
+                for (int row = 0; row < count; row++)
+                    _table.Rows.Add(_table.NewRow());
+
+                MaterialsGrid.ItemsSource = _table.DefaultView;
+                MaterialsGrid.Columns.Clear();
+
+                for (int i = 0; i < _table.Columns.Count; i++)
+                {
+                    var text = new System.Windows.Controls.TextBlock
+                    {
+                        Text = _table.Columns[i].ColumnName,
+                        TextAlignment = TextAlignment.Center,
+                        Width = 90
+                    };
+
+                    var column = new DataGridTextColumn
+                    {
+                        Width = 100,
+                        Header = text,
+                        IsReadOnly = true,
+                        Binding = new System.Windows.Data.Binding($"[{_table.Columns[i].ColumnName}]")
+                    };
+
+                    // Заголовки 1–31 — светло-зеленые
+                    if (i > 0)
+                    {
+                        column.HeaderStyle = new Style(typeof(DataGridColumnHeader))
+                        {
+                            Setters =
+                            {
+                                new Setter(BackgroundProperty, Brushes.LightGreen),
+                                new Setter(HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
+                                new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Center),
+                            }
+                        };
+                    }
+
+                    MaterialsGrid.Columns.Add(column);
                 }
             }
-
-            MaterialsGrid.ItemsSource = _table.DefaultView;
-
-            // Создаем колонки вручную
-            MaterialsGrid.Columns.Clear();
-
-            for (int i = 0; i < _table.Columns.Count; i++)
+            catch (Exception ex)
             {
-                System.Windows.Controls.TextBlock text = new() { Text = _table.Columns[i].ColumnName, TextAlignment = TextAlignment.Center, Width = 90 };
-
-                var column = new DataGridTextColumn
-                {
-                    Width = 100,
-                    Header = text,
-                    IsReadOnly = true,
-                    Binding = new System.Windows.Data.Binding($"[{_table.Columns[i].ColumnName}]")
-                };
-
-                
-
-
-
-                // Заголовки 1–31 — светло-зеленые
-                if (i > 0)
-                {
-                    column.HeaderStyle = new Style(typeof(DataGridColumnHeader))
-                    {
-                        Setters = {
-                            new Setter(BackgroundProperty, Brushes.LightGreen),
-                            new Setter(HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
-                            new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Center),
-                           // new Setter(WidthProperty,text.Width)
-                        }
-                    };
-                }
-
-                MaterialsGrid.Columns.Add(column);
+                Debug.WriteLine($"[MonthlyTable] Ошибка построения таблицы: {ex.Message}");
             }
         }
         private void MaterialsGrid_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
+            try
+            {
             if (MaterialsGrid.SelectedCells.Count == 0) return;
 
             var cellInfo = MaterialsGrid.SelectedCells[0];
             var cellContent = cellInfo.Column.GetCellContent(cellInfo.Item);
             if (cellContent == null) return;
 
-            var cell = (DataGridCell)cellContent.Parent;
+            var cell = cellContent.Parent as DataGridCell;
+            if (cell == null) return;
 
             Point cellPos = cell.TranslatePoint(new Point(0, 0), SelectionCanvas);
             Point cellPosopt = cell.TranslatePoint(new Point(0, 0), SelectionCanvas);
@@ -252,20 +263,12 @@ namespace BifServiceExpenditureMaterials.Controls
             
             // Анимируем рамку
             AnimateSelection(cellPos.X, cellPos.Y);
-            AnimateSelectionOpt(cellPos.X, cellPos.Y,e.GetPosition(MainWindow.window.SnackbarPresenter));
-
-            //var g = (990 / 100) * (990 / cellPos.X);
-            //var h = (327 / 40) * (327 / cellPos.Y);
-            ////System.Windows.MessageBox.Show(cellPos.X + " : " + cellPos.Y);
-            //if (cellPos.X > 950)
-            //{
-            //    AnimateSelectionOpt(-300, -70);
-            //}
-            //else
-            //{
-            //    AnimateSelectionOpt(100, -70);
-            //}
-            //System.Windows.MessageBox.Show(g + " " + cellPos.X + " | " + h + " " + cellPos.Y);
+            AnimateSelectionOpt(cellPos.X, cellPos.Y, e.GetPosition(MainWindow.window.SnackbarPresenter));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка MouseLeftButtonUp: {ex.Message}");
+            }
         }
 
         private void AnimateSelection(double toX, double toY)
@@ -404,37 +407,50 @@ namespace BifServiceExpenditureMaterials.Controls
         }
         public void SearchCell(System.Windows.Controls.DataGrid dataGrid,int rowind,int columnind)
         {
-            int rowIndex = rowind;
-            int columnIndex = columnind;
-
-            dataGrid.ScrollIntoView(dataGrid.Items[rowIndex]);
-
-            DataGridRow row = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex);
-
-            if (row != null)
+            try
             {
-                DataGridCellsPresenter presenter = FindVisualChild<DataGridCellsPresenter>(row);
-                DataGridCell cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(columnIndex);
+                int rowIndex = rowind;
+                int columnIndex = columnind;
 
-                if (cell != null)
+                if (rowIndex < 0 || rowIndex >= dataGrid.Items.Count) return;
+                dataGrid.ScrollIntoView(dataGrid.Items[rowIndex]);
+
+                DataGridRow row = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex);
+
+                if (row != null)
                 {
-                    cell.Focus(); // делает ячейку активной
-                    cell.IsSelected = true;
+                    DataGridCellsPresenter presenter = FindVisualChild<DataGridCellsPresenter>(row);
+                    if (presenter == null) return;
+                    DataGridCell cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(columnIndex);
+
+                    if (cell != null)
+                    {
+                        cell.Focus();
+                        cell.IsSelected = true;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка SearchCell: {ex.Message}");
             }
         }
         private void MaterialsGrid_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
         {
-            var datagrid = MaterialsGrid;
-            if (datagrid.SelectedCells.Count > 0)
+            try
             {
-                DataGridCellInfo cellInfo = datagrid.SelectedCells[0];
-
-                // Найдём UI элемент ячейки
-                // DataGridCell cell = this.GetCell(datagrid, cellInfo);
-                var cell = NewGetCell(datagrid, datagrid.Items.IndexOf(cellInfo.Item), 0);
-                nammachine.Text = ((System.Windows.Controls.TextBlock)cell.Content).Text;
-                //datagrid.BeginEdit();
+                var datagrid = MaterialsGrid;
+                if (datagrid.SelectedCells.Count > 0)
+                {
+                    DataGridCellInfo cellInfo = datagrid.SelectedCells[0];
+                    var cell = NewGetCell(datagrid, datagrid.Items.IndexOf(cellInfo.Item), 0);
+                    if (cell?.Content is System.Windows.Controls.TextBlock tb)
+                        nammachine.Text = tb.Text;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка SelectedCellsChanged: {ex.Message}");
             }
         }
         private DataGridCell GetCell(System.Windows.Controls.DataGrid grid, DataGridCellInfo cellInfo)
@@ -459,6 +475,8 @@ namespace BifServiceExpenditureMaterials.Controls
 
         private async void TO_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
             if (MaterialsGrid.SelectedCells.Count == 0) return;
             if (MaterialsGrid.CurrentCell != null)
             {
@@ -476,6 +494,7 @@ namespace BifServiceExpenditureMaterials.Controls
                 var currentselecttext = GetCurrentColumnCellText(dataGrid, dataGrid.SelectedCells[0]);
                 var row = dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex) as DataGridRow;
                 var currentColumnCell = NewGetCell(dataGrid, rowIndex, columnIndex);
+                if (currentColumnCell == null) return;
                 nomer = firstnomermachine + "_" + columnIndex;
                 if (currentColumnCell.Content is System.Windows.Controls.TextBlock ts)
                 {
@@ -487,13 +506,14 @@ namespace BifServiceExpenditureMaterials.Controls
                         var sltbvl = HomePage.activeMonth;
                         var year = Convert.ToInt32(HomePage._home.YearComboBox.Text);
                         HomePage.CurrentMounth = sltbvl;
-                        //HomePage.CurrentYear = year;
-                        FormTO to = new FormTO(ty,null,false, Convert.ToInt32(HomePage._home.YearComboBox.Text));
-                        to.groupBox.IsEnabled = false;
-                        to.SaveButton.IsEnabled = false;
-                        to.AddPersonBtn.IsEnabled = false;
-                        to.TitleBar.Title = $"Биф сервисы - Форма TO ({ty})";
-                        to.Show();
+                            //HomePage.CurrentYear = year;
+                        FormMaterial toForm = new FormMaterial(ty, null, false, Convert.ToInt32(HomePage._home.YearComboBox.Text));
+                        //FormTO to = new FormTO(ty,null,false, Convert.ToInt32(HomePage._home.YearComboBox.Text));
+                        toForm.groupBox.IsEnabled = false;
+                        toForm.SaveButton.IsEnabled = false;
+                        toForm.AddPersonBtn.IsEnabled = false;
+                        toForm.TitleBar.Title = $"Биф сервисы - Форма TO ({ty})";
+                        toForm.Show();
                     }
                     else
                     {
@@ -502,85 +522,123 @@ namespace BifServiceExpenditureMaterials.Controls
                         currentColumnCell.Background = Brushes.DarkRed;
                         var sltbvl = HomePage.activeMonth;
                         HomePage.CurrentMounth = sltbvl;
-                        FormTO to = new FormTO(ts.Text, rowIndex + ":" + columnIndex, true, Convert.ToInt32(HomePage._home.YearComboBox.Text));
-                        to.groupBox.IsEnabled = true;
-                        to.SaveButton.IsEnabled = true;
-                        to.TitleBar.Title = $"Биф сервисы - Форма TO (Новая) - {ts.Text}";
-                        to.Show();
+                        FormMaterial toForm = new FormMaterial(ts.Text, rowIndex + ":" + columnIndex, true, Convert.ToInt32(HomePage._home.YearComboBox.Text));
+                            //FormTO to = new FormTO(ts.Text, rowIndex + ":" + columnIndex, true, Convert.ToInt32(HomePage._home.YearComboBox.Text));
+                        toForm.groupBox.IsEnabled = true;
+                        toForm.SaveButton.IsEnabled = true;
+                        toForm.TitleBar.Title = $"Биф сервисы - Форма TO (Новая) - {ts.Text}";
+                        toForm.Show();
                                       
                     }
-                    
+
                 }
             }
-            
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка TO_Click: {ex.Message}");
+            }
         }
         public static void ViewCellOnPoints(int x, int y)
         {
-            MonTable.Datagrid.ScrollIntoView(MonTable.Datagrid.Items[x], MonTable.Datagrid.Columns[y]);
+            try
+            {
+                if (MonTable?.Datagrid == null) return;
+                if (x < 0 || x >= MonTable.Datagrid.Items.Count) return;
+                if (y < 0 || y >= MonTable.Datagrid.Columns.Count) return;
+                MonTable.Datagrid.ScrollIntoView(MonTable.Datagrid.Items[x], MonTable.Datagrid.Columns[y]);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка ViewCellOnPoints: {ex.Message}");
+            }
         }
         public string GetFirstColumnCellText(System.Windows.Controls.DataGrid grid, DataGridCellInfo cellInfo)
         {
-            int rowIndex = 0;
-            int columnIndex = 0;
-            rowIndex = grid.Items.IndexOf(cellInfo.Item);
-            columnIndex = grid.Columns.IndexOf(cellInfo.Column);
-            var firstColumnCell = NewGetCell(grid, rowIndex, 0);
-            if (firstColumnCell.Content is System.Windows.Controls.TextBlock tb)
+            try
             {
-                return tb.Text;
+                int rowIndex = grid.Items.IndexOf(cellInfo.Item);
+                var firstColumnCell = NewGetCell(grid, rowIndex, 0);
+                if (firstColumnCell?.Content is System.Windows.Controls.TextBlock tb)
+                {
+                    return tb.Text;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка GetFirstColumnCellText: {ex.Message}");
             }
             return null;
         }
         public string GetCurrentColumnCellText(System.Windows.Controls.DataGrid grid, DataGridCellInfo cellInfo)
         {
-            int rowIndex = 0;
-            int columnIndex = 0;
-            rowIndex = grid.Items.IndexOf(cellInfo.Item);
-            columnIndex = grid.Columns.IndexOf(cellInfo.Column);
-            var currentColumnCell = NewGetCell(grid, rowIndex, columnIndex);
-            if (currentColumnCell.Content is System.Windows.Controls.TextBlock ts)
+            try
             {
-                return ts.Text;
+                int rowIndex = grid.Items.IndexOf(cellInfo.Item);
+                int columnIndex = grid.Columns.IndexOf(cellInfo.Column);
+                var currentColumnCell = NewGetCell(grid, rowIndex, columnIndex);
+                if (currentColumnCell?.Content is System.Windows.Controls.TextBlock ts)
+                {
+                    return ts.Text;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка GetCurrentColumnCellText: {ex.Message}");
             }
             return null;
         }
-        public SolidColorBrush GetCurrentColumnCellBacground(System.Windows.Controls.DataGrid grid, DataGridCellInfo cellInfo)
+        public SolidColorBrush GetCurrentColumnCellBackground(System.Windows.Controls.DataGrid grid, DataGridCellInfo cellInfo)
         {
-            int rowIndex = 0;
-            int columnIndex = 0;
-            rowIndex = grid.Items.IndexOf(cellInfo.Item);
-            columnIndex = grid.Columns.IndexOf(cellInfo.Column);
-            return (SolidColorBrush)NewGetCell(grid, rowIndex, columnIndex).Background;
+            try
+            {
+                int rowIndex = grid.Items.IndexOf(cellInfo.Item);
+                int columnIndex = grid.Columns.IndexOf(cellInfo.Column);
+                var cell = NewGetCell(grid, rowIndex, columnIndex);
+                if (cell != null)
+                    return (SolidColorBrush)cell.Background;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка GetCurrentColumnCellBackground: {ex.Message}");
+            }
+            return null;
         }
         public void EnabledCell(System.Windows.Controls.DataGrid dataGrid, int rowIndex, int columnIndex, bool isEnabled)
         {
-            dataGrid.ScrollIntoView(dataGrid.Items[rowIndex], dataGrid.Columns[columnIndex]);
-
-            // Получаем контейнер строки
-            DataGridRow row = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex);
-            if (row == null)
+            try
             {
-                dataGrid.UpdateLayout();
-                dataGrid.ScrollIntoView(dataGrid.Items[rowIndex]);
-                row = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex);
+                dataGrid.ScrollIntoView(dataGrid.Items[rowIndex], dataGrid.Columns[columnIndex]);
+
+                DataGridRow row = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex);
+                if (row == null)
+                {
+                    dataGrid.UpdateLayout();
+                    dataGrid.ScrollIntoView(dataGrid.Items[rowIndex]);
+                    row = (DataGridRow)dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex);
+                }
+
+                if (row != null)
+                {
+                    DataGridCellsPresenter presenter = FindVisualChild<DataGridCellsPresenter>(row);
+                    if (presenter == null)
+                    {
+                        dataGrid.ScrollIntoView(row, dataGrid.Columns[columnIndex]);
+                        presenter = FindVisualChild<DataGridCellsPresenter>(row);
+                    }
+                    if (presenter == null) return;
+
+                    DataGridCell cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(columnIndex);
+                    if (cell != null)
+                    {
+                        cell.IsEditing = isEnabled;
+                        cell.IsEnabled = isEnabled;
+                    }
+                }
             }
-
-            if (row != null)
+            catch (Exception ex)
             {
-                // Получаем визуальный элемент ячеек
-                DataGridCellsPresenter presenter = FindVisualChild<DataGridCellsPresenter>(row);
-                if (presenter == null)
-                {
-                    dataGrid.ScrollIntoView(row, dataGrid.Columns[columnIndex]);
-                    presenter = FindVisualChild<DataGridCellsPresenter>(row);
-                }
-
-                DataGridCell cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(columnIndex);
-                if (cell != null)
-                {
-                    cell.IsEditing = isEnabled;
-                    cell.IsEnabled = isEnabled;
-                }
+                Debug.WriteLine($"[MonthlyTable] Ошибка EnabledCell: {ex.Message}");
             }
         }
         public void SetCellValue(System.Windows.Controls.DataGrid dataGrid, int rowIndex = 1, int columnIndex = 1, string newValue = "")
@@ -658,20 +716,22 @@ namespace BifServiceExpenditureMaterials.Controls
                     DataGridCell cell = GetCell(dataGrid, row, columnIndex);
                     if (cell == null) return;
                     
+                    try
                     {
-                        var material = App.dBcontext.Materials.OrderBy(e => e.Id).Where(e => e.НомерЯчейки == nomer).ToList()[0];
-                        if (material.ТипТраты == "ТО")
-                        {
-                            cell.Background = Brushes.DarkRed;
-                        }
-                        else
-                        {
-                            cell.Background = Brushes.DarkGreen;
-                        }
+                        var material = App.dBcontext?.Materials?
+                            .OrderBy(e => e.Id)
+                            .FirstOrDefault(e => e.НомерЯчейки == nomer);
 
+                        if (material == null) return;
+
+                        cell.Background = material.ТипТраты == "ТО" ? Brushes.DarkRed : Brushes.DarkGreen;
                         cell.VerticalContentAlignment = VerticalAlignment.Center;
                         cell.HorizontalContentAlignment = HorizontalAlignment.Center;
                         cell.Foreground = Brushes.White;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[MonthlyTable] Ошибка установки фона ячейки '{nomer}': {ex.Message}");
                     }
 
 
@@ -725,6 +785,7 @@ namespace BifServiceExpenditureMaterials.Controls
                     dataGrid.ScrollIntoView(row, dataGrid.Columns[columnIndex]);
                     presenter = FindVisualChild<DataGridCellsPresenter>(row);
                 }
+                if (presenter == null) return null;
 
                 DataGridCell cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(columnIndex);
                 return cell;
@@ -734,20 +795,27 @@ namespace BifServiceExpenditureMaterials.Controls
         
         public DataGridCell NewGetCell(System.Windows.Controls.DataGrid grid, int row, int column)
         {
-            DataGridRow rowContainer = (DataGridRow)grid.ItemContainerGenerator.ContainerFromIndex(row);
-
-            if (rowContainer != null)
+            try
             {
-                DataGridCellsPresenter presenter = NewFindVisualChild<DataGridCellsPresenter>(rowContainer);
+                DataGridRow rowContainer = (DataGridRow)grid.ItemContainerGenerator.ContainerFromIndex(row);
 
-                DataGridCell cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(column);
-                if (cell == null)
+                if (rowContainer != null)
                 {
-                    // Если ячейка виртуализирована, попробуем её создать
-                    grid.ScrollIntoView(rowContainer, grid.Columns[column]);
-                    cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(column);
+                    DataGridCellsPresenter presenter = NewFindVisualChild<DataGridCellsPresenter>(rowContainer);
+                    if (presenter == null) return null;
+
+                    DataGridCell cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(column);
+                    if (cell == null)
+                    {
+                        grid.ScrollIntoView(rowContainer, grid.Columns[column]);
+                        cell = (DataGridCell)presenter.ItemContainerGenerator.ContainerFromIndex(column);
+                    }
+                    return cell;
                 }
-                return cell;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка NewGetCell: {ex.Message}");
             }
             return null;
         }
@@ -760,6 +828,8 @@ namespace BifServiceExpenditureMaterials.Controls
             => FindVisualChild<T>(obj);
         private async void Dol_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
             if (MaterialsGrid.SelectedCells.Count == 0) return;
             if (MaterialsGrid.CurrentCell != null)
             {
@@ -777,6 +847,7 @@ namespace BifServiceExpenditureMaterials.Controls
                 var currentselecttext = GetCurrentColumnCellText(dataGrid, dataGrid.SelectedCells[0]);
                 var row = dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex) as DataGridRow;
                 var currentColumnCell = NewGetCell(dataGrid, rowIndex, columnIndex);
+                if (currentColumnCell == null) return;
                 nomer = firstnomermachine + "_" + columnIndex;
                 if (currentColumnCell.Content is System.Windows.Controls.TextBlock ts)
                 {
@@ -789,12 +860,12 @@ namespace BifServiceExpenditureMaterials.Controls
                         var year = Convert.ToInt32(HomePage._home.YearComboBox.Text);
                         HomePage.CurrentMounth = sltbvl;
                         HomePage.CurrentYear = year;
-                        FormDol to = new FormDol(ty, null, false, Convert.ToInt32(HomePage._home.YearComboBox.Text));
-                        to.groupBox.IsEnabled = false;
-                        to.SaveButton.IsEnabled = false;
-                        to.AddPersonBtn.IsEnabled = false;
-                        to.TitleBar.Title = $"Биф сервисы - Форма Доливки ({ty})";
-                        to.Show();
+                        FormMaterial dolForm = new FormMaterial(ty, null, false, Convert.ToInt32(HomePage._home.YearComboBox.Text), "Доливка");
+                        dolForm.groupBox.IsEnabled = false;
+                        dolForm.SaveButton.IsEnabled = false;
+                        dolForm.AddPersonBtn.IsEnabled = false;
+                        dolForm.TitleBar.Title = $"Биф сервисы - Форма Доливки ({ty})";
+                        dolForm.Show();
                     }
                     else
                     {
@@ -803,16 +874,21 @@ namespace BifServiceExpenditureMaterials.Controls
                         currentColumnCell.Background = Brushes.DarkGreen;
                         var sltbvl = HomePage.activeMonth;
                         HomePage.CurrentMounth = sltbvl;
-                        FormDol to = new FormDol(ts.Text, rowIndex + ":" + columnIndex, true, Convert.ToInt32(HomePage._home.YearComboBox.Text));
-                        to.groupBox.IsEnabled = true;
-                        to.SaveButton.IsEnabled = true;
-                        to.TitleBar.Title = $"Биф сервисы - Форма Доливки (Новая) - {ts.Text}";
-                        to.Show();
+                        FormMaterial dolForm = new FormMaterial(ts.Text, rowIndex + ":" + columnIndex, true, Convert.ToInt32(HomePage._home.YearComboBox.Text), "Доливка");
+                        dolForm.groupBox.IsEnabled = true;
+                        dolForm.SaveButton.IsEnabled = true;
+                        dolForm.TitleBar.Title = $"Биф сервисы - Форма Доливки (Новая) - {ts.Text}";
+                        dolForm.Show();
                     }
 
                 }
             }
 
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка Dol_Click: {ex.Message}");
+            }
         }
         /// <summary>
         /// Загружает данные машин из базы данных и заполняет первый столбец таблицы.
@@ -820,11 +896,13 @@ namespace BifServiceExpenditureMaterials.Controls
         /// </summary>
         public async void GetData()
         {
+            try
+            {
             await Task.Run(async () =>
             {
-                
+                try
                 {
-                    var machines = App.dBcontext.machine.ToList();
+                    var machines = App.dBcontext.machine?.ToList() ?? new List<machine>();
                     int i = 0;
                     foreach (var machine in machines)
                     {
@@ -837,9 +915,18 @@ namespace BifServiceExpenditureMaterials.Controls
                             });
                         }
                     }
-                    var materials = App.dBcontext.Materials.ToList();
+                    var materials = App.dBcontext.Materials?.ToList() ?? new List<Material>();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[MonthlyTable] Ошибка GetData: {ex.Message}");
                 }
             });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка GetData (внешний): {ex.Message}");
+            }
         }
         private async void MaterialsGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
@@ -895,6 +982,8 @@ namespace BifServiceExpenditureMaterials.Controls
         }
         private async void Copy_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
             var button = (System.Windows.Controls.Button)sender;
             if (MaterialsGrid.SelectedCells.Count == 0) return;
             if (MaterialsGrid.CurrentCell != null)
@@ -912,25 +1001,32 @@ namespace BifServiceExpenditureMaterials.Controls
                 var firstnomermachine = GetFirstColumnCellText(dataGrid, dataGrid.SelectedCells[0]);
                 
                 {
-                    var material = App.dBcontext.Materials.OrderBy(s => s.Id);
-                    CopiedMachine = ((System.Windows.Controls.TextBlock)NewGetCell(dataGrid, rowIndex, columnIndex).Content).Text;
-                    InsertBtn.Content = "Вставить: " + CopiedMachine;
-                    //button.Content = "Вставить";
-
-                    if (material.Where(s => s.НомерЯчейки == CopiedMachine).Any())
+                    var material = App.dBcontext?.Materials?.OrderBy(s => s.Id);
+                    if (material == null) return;
+                    var copyCell = NewGetCell(dataGrid, rowIndex, columnIndex);
+                    if (copyCell?.Content is System.Windows.Controls.TextBlock tb)
                     {
-                        isCopiedBrush = GetCurrentColumnCellBacground(dataGrid, cellInfo);
-
+                        CopiedMachine = tb.Text;
                     }
+                    else return;
+                    InsertBtn.Content = "Вставить: " + CopiedMachine;
 
-                    //isCopy = !isCopy;
+                    if (material.Any(s => s.НомерЯчейки == CopiedMachine))
+                    {
+                        isCopiedBrush = GetCurrentColumnCellBackground(dataGrid, cellInfo);
+                    }
                 }
-                
-                
+            }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка Copy_Click: {ex.Message}");
             }
         }
         private async void Insert_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
             var button = (System.Windows.Controls.Button)sender;
             if (MaterialsGrid.SelectedCells.Count == 0) return;
             if (MaterialsGrid.CurrentCell != null)
@@ -948,43 +1044,39 @@ namespace BifServiceExpenditureMaterials.Controls
                 var firstnomermachine = GetFirstColumnCellText(dataGrid, dataGrid.SelectedCells[0]);
                 
                 {
-                    var material = App.dBcontext.Materials.OrderBy(s => s.Id);
+                    var material = App.dBcontext?.Materials?.OrderBy(s => s.Id);
+                    if (material == null) return;
                     if (!string.IsNullOrEmpty(CopiedMachine))
                     {
                         var currentColumnCell = NewGetCell(dataGrid, rowIndex, columnIndex);
+                        if (currentColumnCell == null) return;
                         nomer = firstnomermachine + "_" + columnIndex;
                         if (currentColumnCell.Content is System.Windows.Controls.TextBlock ts)
                         {
-                            if (ts.Text == "" || ts.Text == null || string.IsNullOrWhiteSpace(ts.Text))
+                            if (string.IsNullOrWhiteSpace(ts.Text))
                             {
-                                var sltbvl = ((TabItem)HomePage.tab.SelectedItem).Header.ToString();
+                                var sltbvl = HomePage.activeMonth;
                                 var year = Convert.ToInt32(HomePage._home.YearComboBox.Text);
                                 SetCellValue(dataGrid, rowIndex, columnIndex, nomer);
                                 SetCellBackground(dataGrid, rowIndex, columnIndex, isCopiedBrush);
-                                var mat = material.Where(s => s.НомерЯчейки == CopiedMachine).ToList().First();
-                                var countmat = App.dBcontext.CountMaterials.Where(s => s.Id == mat.countmaterial_id).ToList().First();
+                                var mat = material.FirstOrDefault(s => s.НомерЯчейки == CopiedMachine);
+                                if (mat == null) return;
+                                var countmat = App.dBcontext?.CountMaterials?.FirstOrDefault(s => s.Id == mat.countmaterial_id);
+                                if (countmat == null) return;
                                 nomer = firstnomermachine + "_" + columnIndex;
-                                if (isCopiedBrush.Color == Brushes.DarkGreen.Color)
-                                {
-
-
-                                    new FormTO(mat, countmat, nomer, rowIndex + ":" + columnIndex).Show();
-                                }
-                                else
-                                {
-                                    
-                                    
-                                    new FormDol(mat, countmat, nomer, rowIndex + ":" + columnIndex).Show();
-                                }
+                                new FormMaterial(mat, countmat, nomer, rowIndex + ":" + columnIndex, mat.ТипТраты ?? "ТО").Show();
                                 await Task.Delay(1000);
                                 isCopiedBrush = null;
+                                InsertBtn.Content = "Буфер пуст";
                             }
                         }
                     }
-                    //isCopy = !isCopy;
                 }
-
-
+            }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MonthlyTable] Ошибка Insert_Click: {ex.Message}");
             }
         }
     }

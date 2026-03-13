@@ -1,11 +1,9 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using System.Windows.Controls;
 using System.Windows.Threading;
 using BifServiceExpenditureMaterials.Database;
-using BifServiceExpenditureMaterials.Helpers;
 using BifServiceExpenditureMaterials.Services;
+using BifServiceExpenditureMaterials.Services.Interfaces;
 using BifServiceExpenditureMaterials.ViewModels.Pages;
 using BifServiceExpenditureMaterials.ViewModels.Windows;
 using BifServiceExpenditureMaterials.Views.Pages;
@@ -20,47 +18,50 @@ using Wpf.Ui.DependencyInjection;
 namespace BifServiceExpenditureMaterials
 {
     /// <summary>
-    /// Interaction logic for App.xaml
+    /// Точка входа приложения. Настройка DI-контейнера, запуск хоста и обработка глобальных ошибок.
     /// </summary>
-    
     public partial class App
     {
-        private TaskbarIcon _trayIcon;
+        private TaskbarIcon? _trayIcon;
 
         public static string? filetabs;
 
+        /// <summary>Текущая версия приложения.</summary>
         public static string CurrentVersion = "0.1.35";
 
-        public static AppDbContext dBcontext { get; set; }
-        
-        // The.NET Generic Host provides dependency injection, configuration, logging, and other services.
-        // https://docs.microsoft.com/dotnet/core/extensions/generic-host
-        // https://docs.microsoft.com/dotnet/core/extensions/dependency-injection
-        // https://docs.microsoft.com/dotnet/core/extensions/configuration
-        // https://docs.microsoft.com/dotnet/core/extensions/logging
+        /// <summary>Глобальный контекст базы данных.</summary>
+        public static AppDbContext dBcontext { get; set; } = null!;
+
+        // ─── Конфигурация хоста и DI ────────────────────────────────────────────
+
         private static readonly IHost _host = Host
             .CreateDefaultBuilder()
-            .ConfigureAppConfiguration(c => { c?.SetBasePath(Path.GetDirectoryName(AppContext.BaseDirectory)); })
+            .ConfigureAppConfiguration(c =>
+            {
+                c?.SetBasePath(Path.GetDirectoryName(AppContext.BaseDirectory));
+            })
             .ConfigureServices((context, services) =>
             {
                 services.AddNavigationViewPageProvider();
 
                 services.AddHostedService<ApplicationHostService>();
 
+                // ─── Сервисы приложения (MVVM) ──────────────────────────
+                services.AddSingleton<AppDbContext>();
+                services.AddSingleton<IMaterialService, MaterialService>();
+                services.AddSingleton<IMachineService, MachineService>();
+                services.AddSingleton<IDialogService, DialogService>();
 
-                // Theme manipulation
+                // ─── WPF-UI сервисы ─────────────────────────────────────
                 services.AddSingleton<IThemeService, ThemeService>();
-
-                // TaskBar manipulation
                 services.AddSingleton<ITaskBarService, TaskBarService>();
-
-                // Service containing navigation, same as INavigationWindow... but without window
                 services.AddSingleton<INavigationService, NavigationService>();
 
-                // Main window with navigation
+                // ─── Главное окно ───────────────────────────────────────
                 services.AddSingleton<INavigationWindow, MainWindow>();
                 services.AddSingleton<MainWindowViewModel>();
 
+                // ─── Страницы и их ViewModels ───────────────────────────
                 services.AddSingleton<HomePage>();
                 services.AddSingleton<HomeViewModel>();
 
@@ -83,58 +84,115 @@ namespace BifServiceExpenditureMaterials
                 services.AddSingleton<AnalitickViewModel>();
 
                 services.AddSingleton<VisualizeExpenditure>();
-
                 services.AddSingleton<AddPatternMachine>();
                 services.AddSingleton<DynamicViewMaterialElement>();
 
             }).Build();
 
         /// <summary>
-        /// Gets services.
+        /// Контейнер DI-сервисов.
         /// </summary>
-        public static IServiceProvider Services
-        {
-            get { return _host.Services; }
-        }
+        public static IServiceProvider Services => _host.Services;
+
+        // ─── Жизненный цикл приложения ──────────────────────────────────────────
 
         /// <summary>
-        /// Occurs when the application is loading.
+        /// Запуск приложения: инициализация БД, трей-иконки и окна загрузки.
         /// </summary>
         private async void OnStartup(object sender, StartupEventArgs e)
         {
-            //filetabs = e.Args.Length > 0 ? e.Args[0] : null;
-            _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
-
-            await Task.Run(async () =>
+            try
             {
+                var trayResource = FindResource("TrayIcon");
+                _trayIcon = trayResource as TaskbarIcon;
+
                 await Dispatcher.BeginInvoke(() =>
                 {
-                    dBcontext = new AppDbContext();
-                    WindowPreloader loader = new WindowPreloader(_host);
-                    loader.Show();
+                    try
+                    {
+                        dBcontext = new AppDbContext();
+                        var loader = new WindowPreloader(_host);
+                        loader.Show();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[App] Ошибка инициализации БД: {ex.Message}");
+                        MessageBox.Show(
+                            $"Не удалось подключиться к базе данных:\n{ex.Message}",
+                            "Критическая ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 });
-            });
-            
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[App] Ошибка запуска приложения: {ex.Message}");
+                MessageBox.Show(
+                    $"Ошибка при запуске приложения:\n{ex.Message}",
+                    "Критическая ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         /// <summary>
-        /// Occurs when the application is closing.
+        /// Завершение приложения: освобождение ресурсов.
         /// </summary>
         private async void OnExit(object sender, ExitEventArgs e)
         {
-            _trayIcon?.Dispose();
-            await _host.StopAsync();
-            await dBcontext.DisposeAsync();
-            _host.Dispose();
+            try
+            {
+                _trayIcon?.Dispose();
+                await _host.StopAsync();
+
+                if (dBcontext != null)
+                    await dBcontext.DisposeAsync();
+
+                _host.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[App] Ошибка при завершении: {ex.Message}");
+            }
         }
 
         /// <summary>
-        /// Occurs when an exception is thrown by an application but not handled.
+        /// Глобальный обработчик необработанных исключений UI-потока.
+        /// Логирует ошибку и показывает сообщение пользователю.
         /// </summary>
         private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            // For more info see https://docs.microsoft.com/en-us/dotnet/api/system.windows.application.dispatcherunhandledexception?view=windowsdesktop-6.0
+            Debug.WriteLine($"[App] Необработанное исключение: {e.Exception}");
+
+            try
+            {
+                // Записываем ошибку в файл лога
+                var logPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "BifService", "error.log");
+
+                var logDir = Path.GetDirectoryName(logPath);
+                if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))
+                    Directory.CreateDirectory(logDir);
+
+                var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {e.Exception}\n\n";
+                File.AppendAllText(logPath, logMessage);
+            }
+            catch
+            {
+                // Не пробрасываем ошибку логирования
+            }
+
+            MessageBox.Show(
+                $"Произошла непредвиденная ошибка:\n{e.Exception.Message}\n\n" +
+                "Приложение попытается продолжить работу.",
+                "Ошибка приложения",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+
+            // Помечаем исключение как обработанное — приложение не закрывается
+            e.Handled = true;
         }
+
+        // ─── Трей-меню ──────────────────────────────────────────────────────────
 
         private void MenuItemOpen_Click(object sender, RoutedEventArgs e)
         {
@@ -144,7 +202,7 @@ namespace BifServiceExpenditureMaterials
 
         private void MenuItemExit_Click(object sender, RoutedEventArgs e)
         {
-            _trayIcon.Dispose(); // Важно!
+            _trayIcon?.Dispose();
             Current.Shutdown();
         }
     }

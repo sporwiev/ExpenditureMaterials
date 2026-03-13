@@ -58,17 +58,32 @@ namespace BifServiceExpenditureMaterials.Helpers
         /// <returns>Номер месяца (1–12).</returns>
         public static int GetMouthNumber(string monthName)
         {
-            return MonthNameToNumber[monthName];
+            if (string.IsNullOrEmpty(monthName))
+            {
+                System.Diagnostics.Debug.WriteLine("[Other] GetMouthNumber: передано пустое название месяца");
+                return 1;
+            }
+
+            if (MonthNameToNumber.TryGetValue(monthName, out var number))
+                return number;
+
+            System.Diagnostics.Debug.WriteLine($"[Other] GetMouthNumber: неизвестный месяц '{monthName}'");
+            return 1;
         }
 
         /// <summary>
         /// Преобразует порядковый номер месяца в его название на русском языке.
+        /// Если номер вне диапазона 1–12, возвращает "Январь" и логирует ошибку.
         /// </summary>
         /// <param name="number">Номер месяца (1–12).</param>
         /// <returns>Название месяца на русском языке.</returns>
         public static string GetMouthNumber(int number)
         {
-            return MonthNumberToName[number];
+            if (MonthNumberToName.TryGetValue(number, out var name))
+                return name;
+
+            System.Diagnostics.Debug.WriteLine($"[Other] GetMouthNumber: номер месяца вне диапазона: {number}");
+            return "Январь";
         }
 
         /// <summary>

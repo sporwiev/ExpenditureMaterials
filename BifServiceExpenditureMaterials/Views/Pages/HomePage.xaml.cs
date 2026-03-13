@@ -1,605 +1,415 @@
-﻿using BifServiceExpenditureMaterials.Controls;
-using BifServiceExpenditureMaterials.Forms;
-using BifServiceExpenditureMaterials.Helpers;
-using Microsoft.AspNetCore.SignalR.Client;
-using System.Data;
-using System.Windows.Controls;
-using System.Management;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
-using BifServiceExpenditureMaterials.Models;
-using Wpf.Ui.Controls;
-using BifServiceExpenditureMaterials.Views.Windows;
-using System.Linq;
+using BifServiceExpenditureMaterials.Controls;
 using BifServiceExpenditureMaterials.ViewModels.Pages;
+using BifServiceExpenditureMaterials.Views.Windows;
+using System.Diagnostics;
+using System.Management;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace BifServiceExpenditureMaterials.Views.Pages
 {
     /// <summary>
-    /// Логика взаимодействия для HomePage.xaml
+    /// Главная страница приложения.
+    /// Содержит только UI-логику: анимации, обновление ячеек DataGrid,
+    /// подсветка месяцев. Бизнес-логика — в <see cref="HomeViewModel"/>.
     /// </summary>
     public partial class HomePage : UserControl
     {
+        // ─── Статические ссылки (необходимы для доступа из других частей приложения) ──
 
+        /// <summary>Текущий выбранный месяц (статический доступ для Forms).</summary>
         public static string? CurrentMounth { get; set; }
+
+        /// <summary>Активный месяц (статический доступ для MonthlyTable).</summary>
         public static string? activeMonth { get; private set; }
 
+        /// <summary>Текущий год (статический доступ для Forms).</summary>
         public static int CurrentYear;
+
+        /// <summary>Глобальная ссылка на экземпляр HomePage.</summary>
         public static HomePage _home;
+
+        /// <summary>Флаг: открыта ли панель фильтров.</summary>
         public static bool isOpenFiltes = false;
+
+        /// <summary>Ссылка на TabControl (используется в SaveProject).</summary>
         public static TabControl tab;
+
+        /// <summary>Активная вкладка.</summary>
         public static TabItem? ActiveTabItem;
+
+        /// <summary>Токен отмены поиска.</summary>
         private CancellationTokenSource? _cts;
+
+        /// <summary>Флаг: было ли обновление данных.</summary>
         public static bool isUpdate = false;
+
+        /// <summary>ViewModel главной страницы.</summary>
         public HomeViewModel ViewModel { get; set; }
 
-        
+        // ─── Конструкторы ───────────────────────────────────────────────────────
+
         public HomePage()
         {
             InitializeComponent();
+            ViewModel = new HomeViewModel();
+            DataContext = ViewModel;
             _home = this;
-            //SearchTextBox.Text = GetSystemUUID();
             Loaded += HomePage_Loaded;
-            MainWindow.SizeChangedEvent.AddOwner(typeof(HomePage));
-            //215D5922-38C0-4840-AE4F-88A4C2841B36
+
+            // Подписка на события ViewModel
+            ViewModel.TableUpdateRequested += OnTableUpdateRequested;
+            ViewModel.MonthHighlightRequested += OnMonthHighlightRequested;
         }
+
         public HomePage(HomeViewModel viewModel)
         {
             InitializeComponent();
-            DataContext = this;
-            this.ViewModel = viewModel;
+            ViewModel = viewModel ?? new HomeViewModel();
+            DataContext = ViewModel;
+            _home = this;
+            Loaded += HomePage_Loaded;
+
+            ViewModel.TableUpdateRequested += OnTableUpdateRequested;
+            ViewModel.MonthHighlightRequested += OnMonthHighlightRequested;
         }
 
-        //private void InitHub()
-        //{
-        //    _connection = new HubConnectionBuilder()
-        //    .WithUrl("http://192.168.1.126:5000/hub") // IP сервера
-        //    .WithAutomaticReconnect()
-        //    .Build();
-        //}
+        // ─── Получение UUID системы ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Возвращает UUID системы через WMI.
+        /// </summary>
         public static string GetSystemUUID()
         {
-            string uuid = "";
-            using (var mc = new ManagementClass("Win32_ComputerSystemProduct"))
+            try
             {
+                using var mc = new ManagementClass("Win32_ComputerSystemProduct");
                 foreach (var o in mc.GetInstances())
                 {
                     var mo = (ManagementObject)o;
-                    uuid = mo["UUID"].ToString();
-                    break;
+                    return mo["UUID"]?.ToString() ?? string.Empty;
                 }
             }
-            return uuid;
-        }
-        private async void HomePage_Loaded(object sender, RoutedEventArgs e)
-        {
-            //await SignalRClient.InitializeAsync();
-            //await SignalRClient.Connection.StartAsync();
-            var mounthtext = DateTime.Now.ToString("MMMM");
-            mounthtext = mounthtext.Replace(mounthtext[0], mounthtext[0].ToString().ToUpper()[0]);
-            activeMonth = mounthtext;
-            //if (SignalRClient.Connection.State == HubConnectionState.Disconnected)
-            //{
-
-            //    await SignalRClient.Connection.StartAsync();
-            //}
-            if (!isUpdate)
+            catch (Exception ex)
             {
-                //await SignalRClient.SendNotificationAsync("0x01|Вход в систему: " + PatternSystemIndeficators.GetUser(GetSystemUUID()) + "|Вход");
-                //if (App.filetabs != null)
-                //{
-                var year = 2024;
-                for (; ; )
-                {
-                    if (year == 2030)
-                        break;
-                    YearComboBox.Items.Add(year++);
+                Debug.WriteLine($"[HomePage] Ошибка получения UUID: {ex.Message}");
+            }
+            return string.Empty;
+        }
 
-                }
+        // ─── Загрузка страницы ──────────────────────────────────────────────────
 
-                SearchTextBox.TextChanged += SearchTextBox_TextChanged;
-                //}
+        private void HomePage_Loaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ViewModel.Initialize();
+                activeMonth = ViewModel.ActiveMonth;
 
+                // Настройка ComboBox года
                 YearComboBox.SelectionChanged -= YearComboBox_SelectionChanged;
                 YearComboBox.Text = DateTime.Now.Year.ToString();
-
-
                 YearComboBox.SelectionChanged += YearComboBox_SelectionChanged;
 
-                //SignalRClient.Connection.On<string>("ReceiveUpdate", message =>
-                //{
-                //    // Например, лог или вызов действия
-                //    //MessageBox.Show($"Получено уведомление: {message}");
-                //    Dispatcher.BeginInvoke(async () =>
-                //    {
-                //        DoubleAnimation animopacitystart = new() { To = 1, Duration = new TimeSpan(0, 0, 1) };
-
-                //        var nomer = message.Split('|')[0];
-                //        var mess = message.Split('|')[1];
-                //        var title = message.Split('|')[2];
-                //        infobar.BeginAnimation(InfoBar.OpacityProperty, animopacitystart);
-                //        infobar.Message = mess;
-                //        infobar.Title = title;
-                //        switch (nomer)
-                //        {
-                //            case "0x01" or "0x03":
-                //                infobar.Severity = InfoBarSeverity.Success;
-                //                UpdateData(activeMonth, true);
-                //                break;
-                //            case "0x02":
-                //                infobar.Severity = InfoBarSeverity.Error;
-                //                UpdateData(activeMonth, true);
-                //                break;
-                //            case "0x04":
-                //                infobar.Severity = InfoBarSeverity.Warning;
-                //                UpdateData(activeMonth, true);
-                //                break;
-                //            case "0x05":
-                //                infobar.Severity = InfoBarSeverity.Success;
-
-                //                break;
-                //            case "0x06":
-                //                infobar.Severity = InfoBarSeverity.Error;
-                //                break;
-                //            case "0x07":
-                //                infobar.Severity = InfoBarSeverity.Warning;
-                //                break;
-
-
-                //        }
-
-                //        await Task.Delay(6000);
-                //        animopacitystart.To = 0;
-                //        infobar.BeginAnimation(InfoBar.OpacityProperty, animopacitystart);
-
-
-                //    });
-
-                //});
-                //if(SignalRClient.Connection.State == HubConnectionState.Disconnected)
-                //{
-                    //System.Windows.MessageBox.Show(SignalRClient.Connection.State.ToString());
-                    UpdateData(mounthtext, true);
-                //}
-                
-            }
-            else
-            {
-                var year = 2024;
-                for (; ; )
-                {
-                    if (year == 2030)
-                        break;
-                    YearComboBox.Items.Add(year++);
-
-                }
-
+                // Настройка поиска
                 SearchTextBox.TextChanged += SearchTextBox_TextChanged;
-                //}
 
-                //YearComboBox.SelectionChanged -= YearComboBox_SelectionChanged;
-                
+                // Подсветка текущего месяца
+                HighlightMonth(ViewModel.ActiveMonth);
 
-                UpdateData(mounthtext, true);
-                YearComboBox.Text = DateTime.Now.Year.ToString();
-                YearComboBox.SelectionChanged += YearComboBox_SelectionChanged;
-                
-                
-                montableGl.Datagrid.UnselectAllCells();
+                if (isUpdate)
+                {
+                    montableGl?.Datagrid?.UnselectAllCells();
+                }
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HomePage] Ошибка при загрузке страницы: {ex.Message}");
+            }
+        }
+
+        // ─── Обработчики событий ViewModel ──────────────────────────────────────
+
+        /// <summary>
+        /// Обновляет таблицу при получении данных из ViewModel.
+        /// </summary>
+        private void OnTableUpdateRequested()
+        {
+            try
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (montableGl?.Datagrid == null) return;
+
+                    montableGl.Datagrid.ItemsSource = null;
+                    montableGl.BuildTable();
+
+                    // Заполняем первый столбец — коды машин
+                    int i = 0;
+                    foreach (var machine in ViewModel.Machines)
+                    {
+                        montableGl.SetCellValue(montableGl.Datagrid, i, 0, machine.Code ?? "");
+                        montableGl.EnabledCell(montableGl.Datagrid, i, 0, false);
+                        i++;
+                    }
+
+                    // Заполняем ячейки материалами
+                    var filteredMaterials = ViewModel.GetFilteredMaterials();
+                    foreach (var material in filteredMaterials)
+                    {
+                        if (string.IsNullOrEmpty(material.Ячейка)) continue;
+
+                        var parts = material.Ячейка.Split(':');
+                        if (parts.Length < 2) continue;
+
+                        if (!int.TryParse(parts[0], out var row) || !int.TryParse(parts[1], out var col))
+                            continue;
+
+                        if (!string.IsNullOrEmpty(material.НомерЯчейки))
+                        {
+                            montableGl.SetCellBackground(montableGl.Datagrid, row, col, material.НомерЯчейки);
+                            montableGl.SetCellValue(montableGl.Datagrid, row, col, material.НомерЯчейки);
+                        }
+                    }
+
+                    // Прокручиваем к текущему дню
+                    montableGl.SearchCell(montableGl.Datagrid, 1, DateTime.Now.Day);
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HomePage] Ошибка обновления таблицы: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Подсвечивает кнопку выбранного месяца.
+        /// </summary>
+        private void OnMonthHighlightRequested(string month)
+        {
+            try
+            {
+                Dispatcher.Invoke(() => HighlightMonth(month));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HomePage] Ошибка подсветки месяца: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Сбрасывает все кнопки месяцев и подсвечивает указанный.
+        /// </summary>
+        private void HighlightMonth(string? month)
+        {
+            if (monthPanel == null || string.IsNullOrEmpty(month)) return;
+
             foreach (var child in monthPanel.Children)
             {
-                var button = child as System.Windows.Controls.Button;
-                if (button.Content.ToString() == mounthtext)
+                if (child is System.Windows.Controls.Button button)
                 {
-                    button.Background = Brushes.BlueViolet;
-                   
-
+                    button.Background = Brushes.Transparent;
+                    if (button.Content?.ToString() == month)
+                        button.Background = Brushes.BlueViolet;
                 }
             }
-            //await _connection.StartAsync();
-            //}
-            //else
-            //{
-            //    SaveProject.OnDownload(App.filetabs);
-            //}
-
-            //}
         }
-        //public async Task Update()
-        //{
-        //    await Task.Run(async () =>
-        //    {
-        //        while (true)
-        //        {
-        //            _connection.On<string>("ReceiveUpdate", async (message) =>
-        //            {
-        //                // Здесь ты можешь перезагрузить данные
-        //                if (message != "")
-        //                {
-        //                    await Dispatcher.InvokeAsync(() => UpdateData(GetTabItemByHeader(tabs,CurrentMounth)));
-        //                }
-        //            });
-        //        }
-        //    });
-        //}
-       
-        
-        
-        
+
+        // ─── Статические методы (обратная совместимость) ─────────────────────────
+
+        /// <summary>
+        /// Обновляет DataGrid (вызывается из внешнего кода).
+        /// </summary>
         public static void RefreshDataGrid()
         {
-            _home.UpdateData(activeMonth,true);
-        }
-        public static MonthlyTable GetTable()
-        {
-            return null;
-        }
-        public async Task UpdateData(string month, bool is_update)
-        {
-            List<machine> machines = App.dBcontext.machine.ToList();
-            List<Material> materials = App.dBcontext.Materials.ToList();
-            montableGl.Datagrid.ItemsSource = null;
-            montableGl.BuildTable();
-
-
-            int i = 0;
-            machines.ForEach(a => {
-
-                    montableGl?.SetCellValue(montableGl?.Datagrid, i, 0, a.Code);
-                    montableGl?.EnabledCell(montableGl?.Datagrid, i, 0, false);
-                i++;
-
-            });
-
-            materials.ForEach(async material =>
+            try
             {
-
-
-                int.TryParse(YearComboBox.Text as string, out var result);
-
-                if (material.Год == result && activeMonth == material.Месяц)
-                {
-
-                    var row = Convert.ToInt32(material.Ячейка.Split(":")[0]);
-                    var col = Convert.ToInt32(material.Ячейка.Split(":")[1]);
-
-                    var gt = materials.OrderBy(e => e.Id).Where(e => e.НомерЯчейки == material.НомерЯчейки).ToList()[0].ТипТраты;
-
-                        montableGl.SetCellBackground(montableGl.Datagrid, row, col, material.НомерЯчейки);
-
-                        montableGl.SetCellValue(montableGl?.Datagrid, row, col, material.НомерЯчейки);
-
-                }
-            });
-
-                montableGl.SearchCell(montableGl.Datagrid, 1, DateTime.Now.Day);
-
-        }
-        public static TabItem GetTabItemByHeader(TabControl tabControl, string header)
-        {
-            // Проходим по всем вкладкам в TabControl
-            return tabControl.Items.OfType<TabItem>().FirstOrDefault(a => a.Header.ToString().IndexOf(header) != -1);
-            //foreach (var item in tabControl.Items)
-            //{
-            //    if (item is TabItem tabItem && tabItem.Header.ToString().IndexOf(header) != -1)
-            //    {
-            //        return tabItem;  // Возвращаем найденный TabItem
-            //    }
-            //}
-            //return null;  // Если не нашли TabItem с таким Header
-        }
-        public static string GetHeaderByTabItem(TabItem item)
-        {
-
-            return item.Header.ToString();
-
-        }
-        public static TabItem GetTabItemBySelectionIndex(TabControl tabControl, int index)
-        {
-            // Проверяем, что индекс допустим (не выходит за пределы списка вкладок)
-            if (index >= 0 && index < tabControl.Items.Count)
-            {
-                return tabControl.Items[index] as TabItem;  // Возвращаем соответствующий TabItem
+                _home?.ViewModel?.LoadData();
             }
-            return null;  // Если индекс невалиден
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HomePage] Ошибка RefreshDataGrid: {ex.Message}");
+            }
         }
+
+        public static MonthlyTable GetTable() => null;
+
+        public static void ViewOnPoint(int x, int y)
+        {
+            try
+            {
+                MonthlyTable.ViewCellOnPoints(x, y);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HomePage] Ошибка ViewOnPoint: {ex.Message}");
+            }
+        }
+
+        // ─── TabItem утилиты (обратная совместимость) ────────────────────────────
+
+        public static TabItem? GetTabItemByHeader(TabControl tabControl, string header)
+        {
+            try
+            {
+                return tabControl?.Items.OfType<TabItem>()
+                    .FirstOrDefault(a => a.Header?.ToString()?.IndexOf(header) != -1);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HomePage] Ошибка GetTabItemByHeader: {ex.Message}");
+                return null;
+            }
+        }
+
+        public static string GetHeaderByTabItem(TabItem item) => item?.Header?.ToString() ?? "";
+
+        public static TabItem? GetTabItemBySelectionIndex(TabControl tabControl, int index)
+        {
+            if (tabControl == null || index < 0 || index >= tabControl.Items.Count)
+                return null;
+            return tabControl.Items[index] as TabItem;
+        }
+
+        // ─── UI обработчики событий ─────────────────────────────────────────────
 
         private void YearComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            
-            var bt = ((ComboBox)sender).Text;
-            
-            CurrentYear = int.TryParse(bt, out var year) ? year : DateTime.Now.Year;
-
-            UpdateData(activeMonth, true);
+            try
+            {
+                var bt = ((ComboBox)sender).Text;
+                CurrentYear = int.TryParse(bt, out var year) ? year : DateTime.Now.Year;
+                ViewModel.CurrentYear = CurrentYear;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HomePage] Ошибка смены года: {ex.Message}");
+            }
         }
-        
-        private void SearchTextBox_TextChanged(Wpf.Ui.Controls.AutoSuggestBox sender, Wpf.Ui.Controls.AutoSuggestBoxTextChangedEventArgs args)
+
+        private void SearchTextBox_TextChanged(Wpf.Ui.Controls.AutoSuggestBox sender,
+            Wpf.Ui.Controls.AutoSuggestBoxTextChangedEventArgs args)
         {
-            _cts?.Cancel(); // отменяем предыдущий поиск
+            _cts?.Cancel();
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
-            string search = SearchTextBox.Text.Trim().ToLower();
+            string search = SearchTextBox.Text?.Trim().ToLower() ?? "";
 
-            montableGl.Datagrid.SelectedCells.Clear();
+            if (string.IsNullOrEmpty(search))
+            {
+                montableGl?.Datagrid?.SelectedCells.Clear();
+                return;
+            }
+
+            montableGl?.Datagrid?.SelectedCells.Clear();
             Task.Run(async () =>
             {
                 try
                 {
-                    // Задержка 300 мс
-                    await Task.Delay(3000, token);
-                }
-                catch (TaskCanceledException)
-                {
-                    return;
-                }
+                    await Task.Delay(300, token);
+                    if (token.IsCancellationRequested) return;
 
-                if (token.IsCancellationRequested)
-                    return;
-
-                object foundItem = null;
-
-                // Поиск и UI-обновление на Dispatcher
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    int rowCount = montableGl.Datagrid.Items.Count;
-                    
-                    for (int i = 0; i < rowCount; i++)
+                    await Dispatcher.InvokeAsync(() =>
                     {
-                        if (token.IsCancellationRequested)
-                            return;
+                        if (montableGl?.Datagrid == null) return;
 
-                        DataGridCell cell = montableGl.NewGetCell(montableGl.Datagrid, i, 0);
-                        if (cell?.Content is System.Windows.Controls.TextBlock ts)
+                        int rowCount = montableGl.Datagrid.Items.Count;
+                        for (int i = 0; i < rowCount; i++)
                         {
-                            if (ts.Text.ToLower().IndexOf(search) != -1)
+                            if (token.IsCancellationRequested) return;
+
+                            var cell = montableGl.NewGetCell(montableGl.Datagrid, i, 0);
+                            if (cell?.Content is System.Windows.Controls.TextBlock ts &&
+                                ts.Text.ToLower().Contains(search))
                             {
                                 var column = montableGl.Datagrid.Columns[0];
                                 var cel = new DataGridCellInfo(montableGl.Datagrid.Items[i], column);
                                 montableGl.Datagrid.SelectedCells.Add(cel);
-
                                 montableGl.Datagrid.ScrollIntoView(montableGl.Datagrid.Items[i], column);
-                                
                                 break;
                             }
                         }
-                    }
-                });
-
+                    });
+                }
+                catch (TaskCanceledException) { }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[HomePage] Ошибка поиска: {ex.Message}");
+                }
             }, token);
         }
-        private void AddMachineBtn_Click(object sender, RoutedEventArgs e)
-        {
-            new FormAddMachine().Show();
-            
-        }
-        
-        private void UpdateMachineBtn_Click(object sender, RoutedEventArgs e)
-        {
-            new FormUpdateMachine().Show();
-        }
 
-        private void SearchFilterButton_Click(object sender, RoutedEventArgs e)
-        {
-            //FormSearchFilters().Show();
-        }
+        private void AddMachineBtn_Click(object sender, RoutedEventArgs e)
+            => ViewModel.AddMachineCommand.Execute(null);
+
+        private void UpdateMachineBtn_Click(object sender, RoutedEventArgs e)
+            => ViewModel.UpdateMachineCommand.Execute(null);
+
+        private void SearchFilterButton_Click(object sender, RoutedEventArgs e) { }
+
         private void UpdateFillTable_Click(object sender, RoutedEventArgs e)
-        {
-            UpdateData(activeMonth, true);
-        }
+            => ViewModel.RefreshDataCommand.Execute(null);
+
         private void TypeProductComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var product = ((ComboBox)sender).SelectedIndex;
-
-                switch (product)
-                {
-                    case 0:
-                        ProductComboBox.ItemsSource = App.dBcontext.Oil?.Select(s => s.Name).ToList();
-                        break;
-                    case 1:
-
-                        ProductComboBox.ItemsSource = App.dBcontext.Antifreeze?.Select(s => s.Name).ToList();
-                        break;
-                    case 2:
-                        ProductComboBox.ItemsSource = App.dBcontext.Grease?.Select(s => s.Name).ToList();
-                        break;
-                    case 3:
-                        ProductComboBox.ItemsSource = App.dBcontext.Filter?.Select(s => s.Name).ToList();
-                        break;
-                }
-                ProductComboBox.SelectedIndex = 0;
-                // = (System.Collections.IEnumerable)productdb;
-            
-        }
-        public static void ViewOnPoint(int x,int y)
-        {
-            MonthlyTable.ViewCellOnPoints(x,y);
-        }
-        public void FilterProduct<T>(string month,T t,string value)
-        {
-            
-            var name = "";
-            MonthlyTable montableGl = null;
-            var nametab = month;
-            var table = montableGl;
-            montableGl = table;
-            montableGl.Datagrid.ItemsSource = null;
-            montableGl.BuildTable();
-            //RefreshDataGrid(montableGl.Datagrid);
-            name = nametab;
-            int i = 0;
-            var oil = "";
-            var antifreeze = new int();
-            var grease = new int();
-            var filter = new int();
-            var listfilterPoints = new List<string>();
-            List<machine> machines;
-            List<Material> materials = new List<Material>();
-            SolidColorBrush brush = new SolidColorBrush()
-            { 
-                Color = Color.FromRgb(
-                    (byte)new Random().Next(1,255),
-                    (byte)new Random().Next(1, 255),
-                    (byte)new Random().Next(1, 255)
-                ) 
-            };
-
+            try
             {
-
-
-                int.TryParse(YearComboBox.Text as string, out var resultmachineyear);
-                machines = App.dBcontext.machine
-                        .Where(m => m.Год == resultmachineyear)
-                        .ToList();
-                
-                if (t is Oil)
-                {
-                    oil = App.dBcontext.Oil.Where(s => s.Name == value).First().Id.ToString();
-                    materials = App.dBcontext.Materials.Where(s => s.oilCode == oil && s.Год == resultmachineyear).ToList();
-
-                }
-                if (t is Antifreeze)
-                {
-                    antifreeze = App.dBcontext.Antifreeze.Where(s => s.Name == value).First().Id;
-                    materials = App.dBcontext.Materials.Where(s => s.antifreeze_id == antifreeze && s.Год == resultmachineyear).ToList();
-                }
-                if (t is Grease)
-                {
-                    grease = App.dBcontext.Grease.Where(s => s.Name == value).First().Id;
-                    materials = App.dBcontext.Materials.Where(s => s.grease_id == grease && s.Год == resultmachineyear).ToList();
-                }
-                if (t is Filter)
-                {
-                    filter = App.dBcontext.Filter.Where(s => s.Name == value).First().id;
-                    var countmaterial = App.dBcontext.CountMaterials.Where(s => s.count_filterids.IndexOf(filter.ToString()) != -1).Select(s => s.Id).ToList();
-                    foreach(var mat in countmaterial)
-                    {
-                        var material = App.dBcontext.Materials.Where(s => s.countmaterial_id == mat && s.Год == resultmachineyear).First();
-                        var row = Convert.ToInt32(material.Ячейка.Split(":")[0]);
-                        var col = Convert.ToInt32(material.Ячейка.Split(":")[1]);
-                        montableGl.SetCellValue(montableGl?.Datagrid,row,col, material.НомерЯчейки);
-                        montableGl.SetCellBackground(montableGl?.Datagrid, row, col, brush);
-                    }
-                }
-               //materials = App.dBcontext.Materials.ToList();
-                //await App.dBcontext.DisposeAsync();
+                ViewModel.SelectedProductTypeIndex = ((ComboBox)sender).SelectedIndex;
             }
-            foreach (var machine in machines)
+            catch (Exception ex)
             {
-
-                montableGl.SetCellValue(montableGl?.Datagrid, i, 0, machine?.Code);
-                montableGl.EnabledCell(montableGl?.Datagrid, i, 0, false);
-
-                i++;
-            }
-            foreach (var material in materials)
-            {
-                if (activeMonth == material.Месяц)
-                {
-                    var row = Convert.ToInt32(material.Ячейка.Split(":")[0]);
-                    var col = Convert.ToInt32(material.Ячейка.Split(":")[1]);
-                    var gt = materials.OrderBy(e => e.Id).Where(e => e.НомерЯчейки == material.НомерЯчейки).First().ТипТраты;
-                    montableGl.SetCellValue(montableGl?.Datagrid, row, col, material.НомерЯчейки);
-
-                    montableGl.SetCellBackground(montableGl.Datagrid, row, col, brush);
-
-                    //montableGl.EnabledCell(montableGl?.Datagrid, Convert.ToInt32(material.Ячейка.Split(":")[0]), Convert.ToInt32(material.Ячейка.Split(":")[1]), false);
-                }
-            }
-            montableGl.SearchCell(montableGl.Datagrid, 1, DateTime.Now.Day);
-        }
-        private void FilterSaveButton_Click(object sender,EventArgs e)
-        {
-            var but = sender as System.Windows.Controls.Button;
-            if (but.Content.ToString() == "Применить")
-            {
-                var type = TypeProductComboBox;
-                var product = ProductComboBox;
-
-                {
-
-                    switch (type.SelectedIndex)
-                    {
-                        case 0:
-                            if(App.dBcontext.Oil.Where(s => s.Name == product.Text).Select(s => s.Name).Any())
-                                FilterProduct<Oil>(activeMonth, new Oil(), App.dBcontext.Oil.Where(s => s.Name == product.Text).Select(s => s.Name).First());
-                            break;
-                        case 1:
-                            if(App.dBcontext.Antifreeze.Where(s => s.Name == product.Text).Select(s => s.Name).Any())
-                                FilterProduct<Antifreeze>(activeMonth, new Antifreeze(), App.dBcontext.Antifreeze.Where(s => s.Name == product.Text).Select(s => s.Name).First());
-
-                            break;
-                        case 2:
-                            if(App.dBcontext.Grease.Where(s => s.Name == product.Text).Select(s => s.Name).Any())
-                                FilterProduct<Grease>(activeMonth, new Grease(), App.dBcontext.Grease.Where(s => s.Name == product.Text).Select(s => s.Name).First());
-                            break;
-                        case 3:
-                            if(App.dBcontext.Filter.Where(s => s.Name == product.Text).Select(s => s.Name).Any())
-                                FilterProduct<Filter>(activeMonth, new Filter(), App.dBcontext.Filter.Where(s => s.Name == product.Text).Select(s => s.Name).First());
-                            break;
-                    }
-                }
-                but.Content = "Отменить";
-            }
-            else
-            {
-                but.Content = "Применить";
-                UpdateData(activeMonth,true);
+                Debug.WriteLine($"[HomePage] Ошибка смены типа продукта: {ex.Message}");
             }
         }
 
-        private void ProductComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var product = (ComboBox)sender;
-           
-                
-        }
+        private void FilterSaveButton_Click(object sender, EventArgs e)
+            => ViewModel.ToggleFilterCommand.Execute(null);
+
+        private void ProductComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
 
         private async void Button_Click(object sender, RoutedEventArgs e)
         {
-            var selectButton = ((System.Windows.Controls.Button)sender);
-            await Task.Run(async () =>
+            try
             {
-                await Dispatcher.InvokeAsync(async () =>
-                 {
-                     MainWindow.ActiveAnimate();
+                var selectButton = (System.Windows.Controls.Button)sender;
+                var month = selectButton.Content?.ToString();
+                if (string.IsNullOrEmpty(month)) return;
 
-                     foreach (var child in monthPanel.Children)
-                     {
-                         var button = child as System.Windows.Controls.Button;
-                         button.Background = Brushes.Transparent;
+                MainWindow.ActiveAnimate();
 
-                     }
-
-                     
-                 });
-                
-                
-                await Task.Delay(500);
-                await Dispatcher.InvokeAsync(async () =>
+                foreach (var child in monthPanel.Children)
                 {
-                    activeMonth = selectButton.Content.ToString();
-                    await UpdateData(activeMonth, true);
-                });
+                    if (child is System.Windows.Controls.Button button)
+                        button.Background = Brushes.Transparent;
+                }
+
                 await Task.Delay(500);
-                await Dispatcher.InvokeAsync(async () =>
-                {
 
-                    
+                activeMonth = month;
+                ViewModel.SelectMonthCommand.Execute(month);
 
-                    MainWindow.DisableAnimate();
-                });
-            });
-            selectButton.Background = Brushes.BlueViolet;
+                await Task.Delay(500);
+                MainWindow.DisableAnimate();
+
+                selectButton.Background = Brushes.BlueViolet;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HomePage] Ошибка переключения месяца: {ex.Message}");
+            }
         }
 
-        private void Button_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        private void Button_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e) { }
+
+        /// <summary>
+        /// Метод фильтрации продуктов — используется из UI.
+        /// Оставлен для совместимости, но логика перенесена в ViewModel.
+        /// </summary>
+        public void FilterProduct<T>(string month, T t, string value)
         {
-           // var selectButton = ((System.Windows.Controls.Button)sender);
-           // selectButton.Background = Brushes.Transparent;
+            // Логика перенесена в ViewModel.ToggleFilter()
+            // Этот метод сохранён для обратной совместимости
+            ViewModel.ToggleFilterCommand.Execute(null);
         }
     }
-    
 }
-
