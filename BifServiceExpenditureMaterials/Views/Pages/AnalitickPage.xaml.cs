@@ -1,25 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using System.Diagnostics;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using BifServiceExpenditureMaterials.AutoPiter;
 using BifServiceExpenditureMaterials.Controls;
 using BifServiceExpenditureMaterials.Database;
 using BifServiceExpenditureMaterials.Helpers;
-using Newtonsoft.Json.Linq;
 using Other = BifServiceExpenditureMaterials.Helpers.Other;
 
 namespace BifServiceExpenditureMaterials.Views.Pages
@@ -198,9 +181,9 @@ namespace BifServiceExpenditureMaterials.Views.Pages
                 }
                 
             }
-            catch
+            catch (Exception ex)
             {
-
+                Debug.WriteLine($"[AnalitickPage] Ошибка: {ex.Message}");
             }
         }
         
@@ -495,9 +478,9 @@ namespace BifServiceExpenditureMaterials.Views.Pages
 
                 }
             }
-            catch
+            catch (Exception ex)
             {
-
+                Debug.WriteLine($"[AnalitickPage] Ошибка: {ex.Message}");
             }
         }
     }

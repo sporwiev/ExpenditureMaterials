@@ -1,219 +1,202 @@
-﻿using BifServiceExpenditureMaterials.Database;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
+using System.Diagnostics;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using BifServiceExpenditureMaterials.Database;
+using BifServiceExpenditureMaterials.Helpers;
+using Microsoft.EntityFrameworkCore;
 
 namespace BifServiceExpenditureMaterials.Views.Pages
 {
     /// <summary>
-    /// Логика взаимодействия для ViewMachinePage.xaml
+    /// Просмотр истории расходников по машине, месяцу и году.
     /// </summary>
     public partial class ViewMachinePage : UserControl
     {
+        private static readonly Dictionary<string, int> MonthNumbers = new()
+        {
+            ["Январь"] = 1, ["Февраль"] = 2, ["Март"] = 3, ["Апрель"] = 4,
+            ["Май"] = 5, ["Июнь"] = 6, ["Июль"] = 7, ["Август"] = 8,
+            ["Сентябрь"] = 9, ["Октябрь"] = 10, ["Ноябрь"] = 11, ["Декабрь"] = 12
+        };
+
         public ViewMachinePage()
         {
             InitializeComponent();
-            
-            {
-                if(App.dBcontext.machine.Count() == 0)
-                {
-                    return;
-                }
-            }
-                Loaded += ViewMachinePage_Loaded;
+            Loaded += ViewMachinePage_Loaded;
         }
+
+        // ─── Загрузка страницы ─────────────────────────────────────────────────
 
         private async void ViewMachinePage_Loaded(object sender, RoutedEventArgs e)
         {
-            
+            try
             {
-                List<string> newmaterial = new List<string>();
-                foreach(var material in App.dBcontext.Materials.OrderBy(e => e.Id).Select(e => e.НомерЯчейки).Distinct().ToList())
-                {
-                    newmaterial.Add(material.Split("_")[0]);
-                }
-                MachineComboBox.ItemsSource = newmaterial.Distinct();
-                //MachineComboBox.ItemsSource = App.dBcontext.machine.OrderBy(e => e.Id).Select(e => e.Code).ToList();
+                if (!App.dBcontext.machine.Any()) return;
 
-                MounthComboBox.ItemsSource = App.dBcontext.Materials.OrderBy(e => e.Id).Select(e => e.Месяц).Distinct().ToList();
-                YearComboBox.ItemsSource = App.dBcontext.Materials.OrderBy(e => e.Id).Select(e => e.Год).Distinct().ToList();
-                Task.Delay(1000);
-                var machine = MachineComboBox.Text;
-                var materials = await App.dBcontext.Materials
-                    .Include(e => e.CountMaterials)
-                    .Include(e => e.Oil)
-                    .Include(e => e.Grease)
-                    .Include(e => e.Antifreeze)
-                    .Where(e => e.НомерЯчейки.StartsWith(machine + "_"))
-                    .Where(e => e.Месяц == MounthComboBox.Text)
-                    .Where(e => e.Год == Convert.ToInt32(YearComboBox.Text == "" ? DateTime.Now.Year : YearComboBox.Text))
-                    .OrderBy(e => e.Месяц)
-                    .ToListAsync(); // Запрос завершён, дальше в памяти
-                datagrid.ItemsSource = materials.Select(e => new
-                {
-                    Дата = GetDay(e.Ячейка, e.Месяц, e.Год.ToString()),
-                    Машина = e.НомерЯчейки,
-                    Вид_Монтажа = e.ТипТраты,
-                    Масло = e.Oil?.Name,
-                    Количество_Литров_Масла = e.CountMaterials?.count_oil,
-                    Фильтры = e.CountMaterials?.count_filtername,
-                    Количество_Фильтров = e.CountMaterials?.count_filter,
-                    Мотор_ы = e.CountMaterials?.count_motors,
-                    Антифриз = e.Antifreeze?.Name,
-                    Количество_Антифриза = e.CountMaterials?.count_antifreeze,
-                    Смазка = e.Grease?.Name,
-                    Количество_Смазки = e.CountMaterials?.count_grease,
-                    Мото_Часы = e.CountMaterials?.count_other_clock,
-                    Пробег = e.CountMaterials?.count_other_milesage,
-                    e.Ответственный
-                }).ToList();
-                //await App.dBcontext.DisposeAsync();
+                // Список машин из записей материалов
+                var machines = App.dBcontext.Materials
+                    .OrderBy(m => m.Id)
+                    .Select(m => m.НомерЯчейки)
+                    .AsEnumerable()
+                    .Select(s => s?.Split('_').FirstOrDefault() ?? "")
+                    .Distinct()
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+                MachineComboBox.ItemsSource = machines;
+
+                MounthComboBox.ItemsSource = App.dBcontext.Materials
+                    .OrderBy(m => m.Id)
+                    .Select(m => m.Месяц)
+                    .Distinct()
+                    .ToList();
+
+                YearComboBox.ItemsSource = App.dBcontext.Materials
+                    .OrderBy(m => m.Id)
+                    .Select(m => m.Год)
+                    .Distinct()
+                    .ToList();
+
+                // Установить текущий месяц и год по умолчанию
+                var currentYear = DateTime.Now.Year;
+                var currentMonth = Other.GetMouthNumber(DateTime.Now.Month); // возвращает название месяца
+                if (YearComboBox.Items.Contains(currentYear))
+                    YearComboBox.SelectedItem = currentYear;
+                else if (YearComboBox.Items.Count > 0)
+                    YearComboBox.SelectedIndex = 0;
+
+                if (MounthComboBox.Items.Contains(currentMonth))
+                    MounthComboBox.SelectedItem = currentMonth;
+                else if (MounthComboBox.Items.Count > 0)
+                    MounthComboBox.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ViewMachinePage] Ошибка загрузки: {ex.Message}");
             }
         }
+
+        // ─── Смена фильтра (машина / месяц / год) ─────────────────────────────
+
         private async void MachineComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            
-            await Task.Delay(1000);
-            var machine = MachineComboBox.Text;
-            var month = MounthComboBox.Text;
-            var yearText = YearComboBox.Text;
-            if (!int.TryParse(yearText, out int year))
+            try
             {
-                MessageBox.Show("Некорректный год: " + yearText);
-                return;
-            }
+                var machine = MachineComboBox.Text;
+                var month   = MounthComboBox.Text;
+                var yearText = YearComboBox.Text;
 
-            
-            {
+                if (string.IsNullOrEmpty(machine)) return;
+
+                if (!int.TryParse(yearText, out int year))
+                    year = DateTime.Now.Year;
+
                 var materials = await App.dBcontext.Materials
-                    .Include(e => e.CountMaterials)
-                    .Include(e => e.Oil)
-                    .Include(e => e.Grease)
-                    .Include(e => e.Antifreeze)
-                    .Where(e => e.НомерЯчейки.StartsWith(machine + "_"))
-                    .Where(e => e.Месяц == MounthComboBox.Text)
-                    .Where(e => e.Год == Convert.ToInt32(YearComboBox.Text))
-                    .OrderBy(e => e.Месяц)
-                    .ToListAsync(); // Запрос завершён, дальше в памяти
-                var list = materials.Select(e => new
+                    .Include(m => m.CountMaterials)
+                    .Include(m => m.Oil)
+                    .Include(m => m.Grease)
+                    .Include(m => m.Antifreeze)
+                    .Where(m => m.НомерЯчейки.StartsWith(machine + "_"))
+                    .Where(m => string.IsNullOrEmpty(month) || m.Месяц == month)
+                    .Where(m => m.Год == year)
+                    .OrderBy(m => m.Id)
+                    .ToListAsync();
+
+                var list = materials.Select(m => new
                 {
-                    Дата = GetDay(e.Ячейка ?? "", e.Месяц ?? "", e.Год.ToString() ?? "_______"),
-                    Машина = e.НомерЯчейки,
-                    Вид_Монтажа = e.ТипТраты,
-                    Масло = e.Oil?.Name ?? "_______",
-                    //Количество_Литров_Масла = e.CountMaterials?.count_oil ?? 0,
-                    Фильтры = e.CountMaterials?.count_filtername ?? "_______",
-                    Количество_Фильтров = (e.CountMaterials?.count_filter ?? "_______").ToString() ?? "_______",
-                    Мотор_ы = (e.CountMaterials?.count_motors ?? "_______").ToString() ?? "_______",
-                    Антифриз = e.Antifreeze?.Name ?? "_______",
-                    Количество = e.CountMaterials?.count_antifreeze ?? 0,
-                    Смазка = e.Grease?.Name ?? "_______",
-                    Количество_Смазки = e.CountMaterials?.count_grease ?? 0,
-                    Мото_Часы = e.CountMaterials?.count_other_clock ?? 0,
-                    Пробег = e.CountMaterials?.count_other_milesage ?? 0,
-                    Ответственный = e.Ответственный ?? "_______"
+                    Дата                  = GetDay(m.Ячейка, m.Месяц, m.Год.ToString()),
+                    Машина                = m.НомерЯчейки ?? "—",
+                    Вид                   = m.ТипТраты ?? "—",
+                    Масло                 = m.Oil?.Name ?? "—",
+                    Литры_масла           = m.CountMaterials?.count_oil ?? "—",
+                    Фильтры               = m.CountMaterials?.count_filtername ?? "—",
+                    Кол_фильтров          = ParseInt(m.CountMaterials?.count_filter),
+                    Антифриз              = m.Antifreeze?.Name ?? "—",
+                    Литры_антифриза       = m.CountMaterials?.count_antifreeze ?? 0,
+                    Смазка                = m.Grease?.Name ?? "—",
+                    Кг_смазки             = m.CountMaterials?.count_grease ?? 0,
+                    Моточасы              = m.CountMaterials?.count_other_clock ?? 0,
+                    Пробег_км             = m.CountMaterials?.count_other_milesage ?? 0,
+                    Ответственный         = m.Ответственный ?? "—"
                 }).ToList();
 
-                int countfilter = list.Sum(x => int.TryParse(x.Количество_Фильтров, out var n) ? n : 0);
-                //int countoils = list.Sum(x => x.Количество_Литров_Масла);
+                if (list.Count == 0)
+                {
+                    datagrid.ItemsSource = null;
+                    return;
+                }
+
+                // Строка ИТОГО
                 list.Add(new
                 {
-                    Дата = "ИТОГО",
-                    Машина = list.Count != 0 ? list[0].Машина : "_______",
-                    Вид_Монтажа = "ТО/Доливка",
-                    Масло = "_______",
-                    //Количество_Литров_Масла = countoils,
-                    Фильтры = "_______",
-                    Количество_Фильтров = countfilter.ToString(),
-                    Мотор_ы = "_______", // можешь тоже просуммировать, как с фильтрами
-                    Антифриз = "_______",
-                    Количество = list.Sum(x => x.Количество),
-                    Смазка = "_______",
-                    Количество_Смазки = list.Sum(x => x.Количество_Смазки),
-                    Мото_Часы = list.Sum(x => x.Мото_Часы),
-                    Пробег = list.Sum(x => x.Пробег),
-                    Ответственный = "_______"
+                    Дата              = "─── ИТОГО ───",
+                    Машина            = list[0].Машина,
+                    Вид               = "ТО + Доливка",
+                    Масло             = "—",
+                    Литры_масла       = "—",
+                    Фильтры           = "—",
+                    Кол_фильтров      = list.Sum(x => x.Кол_фильтров),
+                    Антифриз          = "—",
+                    Литры_антифриза   = list.Sum(x => x.Литры_антифриза),
+                    Смазка            = "—",
+                    Кг_смазки         = list.Sum(x => x.Кг_смазки),
+                    Моточасы          = list.Sum(x => x.Моточасы),
+                    Пробег_км         = list.Sum(x => x.Пробег_км),
+                    Ответственный     = "—"
                 });
+
                 datagrid.ItemsSource = list;
-                //await App.dBcontext.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ViewMachinePage] Ошибка загрузки данных: {ex.Message}");
             }
         }
-        public string GetDay(string Ячейка,string Месяц,string Год)
+
+        // ─── Вспомогательные методы ────────────────────────────────────────────
+
+        private static int ParseInt(object? value)
         {
-            var dateInteger = new Dictionary<string, int>
-            {
-                ["Январь"] = 01,
-                ["Февраль"] = 02,
-                ["Март"] = 03,
-                ["Апрель"] = 04,
-                ["Май"] = 05,
-                ["Июнь"] = 06,
-                ["Июль"] = 07,
-                ["Август"] = 08,
-                ["Сентябрь"] = 09,
-                ["Октябрь"] = 10,
-                ["Ноябрь"] = 11,
-                ["Декабрь"] = 12
-            };
-            //var dateString = new Dictionary<int, string> {
-            //    [01] = $"{Месяц} Понедельник (01.{dateInteger[Месяц]}.{Год})",
-            //    [02] = $"{Месяц} Вторник",
-            //    [03] = $"{Месяц} Среда",
-            //    [04] = $"{Месяц} Четверг",
-            //    [05] = $"{Месяц} Пятница",
-            //    [06] = $"{Месяц} Суббота",
-            //    [07] = $"{Месяц} Воскресенье",
-            //    [08] = $"{Месяц} Понедельник ()",
-            //    [09] = $"{Месяц} Вторник",
-            //    [10] = $"{Месяц} Среда",
-            //    [11] = $"{Месяц} Четверг",
-            //    [12] = $"{Месяц} Пятница",
-            //    [13] = $"{Месяц} Суббота",
-            //    [14] = $"{Месяц} Воскресенье",
-            //    [15] = $"{Месяц} Понедельник ()",
-            //    [16] = $"{Месяц} Вторник",
-            //    [17] = $"{Месяц} Среда",
-            //    [18] = $"{Месяц} Четверг",
-            //    [19] = $"{Месяц} Пятница",
-            //    [20] = $"{Месяц} Суббота",
-            //    [21] = $"{Месяц} Воскресенье",
-            //    [22] = $"{Месяц} Понедельник ()",
-            //    [23] = $"{Месяц} Вторник",
-            //    [24] = $"{Месяц} Среда",
-            //    [25] = $"{Месяц} Четверг",
-            //    [26] = $"{Месяц} Пятница",
-            //    [27] = $"{Месяц} Суббота",
-            //    [28] = $"{Месяц} Воскресенье",
-            //    [29] = $"{Месяц} Понедельник ()",
-            //    [30] = $"{Месяц} Вторник",
-            //    [31] = $"{Месяц} Среда",
-            //};
-            var daysOfWeek = new[] {
-    "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"
-};
+            if (value == null) return 0;
+            return int.TryParse(value.ToString(), out int n) ? n : 0;
+        }
 
-            var result = new Dictionary<int, string>();
-
-            for (int day = 1; day <= 31; day++)
+        private string GetDay(string? ячейка, string? месяц, string? год)
+        {
+            try
             {
-                int dayOfWeekIndex = (day - 1) % 7; // индекс в массиве дней недели от 0 до 6
-                string dayName = daysOfWeek[dayOfWeekIndex];
-                string dateFormatted = $"{day:00}.{dateInteger[Месяц]:00}.{Год}";
-                result[day] = $"{Месяц} {dayName} ({dateFormatted})";
+                if (string.IsNullOrEmpty(ячейка) || string.IsNullOrEmpty(месяц) || string.IsNullOrEmpty(год))
+                    return "—";
+
+                var parts = ячейка.Split(':');
+                if (parts.Length < 2 || !int.TryParse(parts[1], out int day))
+                    return "—";
+
+                if (!MonthNumbers.TryGetValue(месяц, out int monthNum))
+                    return "—";
+
+                if (!int.TryParse(год, out int yearNum))
+                    return "—";
+
+                // Вычисляем реальный день недели
+                var date = new DateTime(yearNum, monthNum, Math.Min(day, DateTime.DaysInMonth(yearNum, monthNum)));
+                var dayOfWeek = date.DayOfWeek switch
+                {
+                    DayOfWeek.Monday    => "Понедельник",
+                    DayOfWeek.Tuesday   => "Вторник",
+                    DayOfWeek.Wednesday => "Среда",
+                    DayOfWeek.Thursday  => "Четверг",
+                    DayOfWeek.Friday    => "Пятница",
+                    DayOfWeek.Saturday  => "Суббота",
+                    DayOfWeek.Sunday    => "Воскресенье",
+                    _ => "—"
+                };
+
+                return $"{месяц} {dayOfWeek} ({day:00}.{monthNum:00}.{год})";
             }
-            return result[Convert.ToInt32(Ячейка.Split(':')[1])];
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ViewMachinePage] Ошибка GetDay: {ex.Message}");
+                return "—";
+            }
         }
     }
 }

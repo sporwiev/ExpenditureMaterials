@@ -1,467 +1,277 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
+using System.Diagnostics;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using BifServiceExpenditureMaterials.Database;
-using BifServiceExpenditureMaterials.Helpers;
 using BifServiceExpenditureMaterials.Models;
 
 namespace BifServiceExpenditureMaterials.Views.Pages
 {
     /// <summary>
-    /// Логика взаимодействия для AddPage.xaml
+    /// Страница добавления новых расходников (масло, антифриз, смазка, фильтр) в справочники.
     /// </summary>
     public partial class AddPage : UserControl
     {
-        ComboBox suzh1Box;
-        ComboBox suzh2Box;
-        ComboBox suzh3Box;
         public AddPage()
         {
             InitializeComponent();
             combo.SelectionChanged += Combo_SelectionChanged;
-            
-            suzh1.MouseRightButtonDown += Suzh_MouseDown;
-            suzh2.MouseRightButtonDown += Suzh_MouseDown;
-            suzh3.MouseRightButtonDown += Suzh_MouseDown;
             combo.SelectedIndex = 0;
         }
 
-        private void Suzh_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-
-                if (e.ChangedButton == MouseButton.Right)
-                {
-                    if (combo.SelectedValue != null)
-
-                        switch (combo.SelectedValue.ToString())
-                        {
-                            case "Масло":
-
-                                switch (Grid.GetRow(sender as TextBox))
-                                {
-                                    case 2:
-                                        suzh1Box = new ComboBox() { ItemsSource = App.dBcontext.oiltypefields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh1Box, 2);
-                                        Grid.SetColumn(suzh1Box, 1);
-                                        grid.Children.Add(suzh1Box);
-                                        break;
-                                    case 3:
-                                        suzh2Box = new ComboBox() { ItemsSource = App.dBcontext.oilbrandfields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh2Box, 3);
-                                        Grid.SetColumn(suzh2Box, 1);
-                                        grid.Children.Add(suzh2Box);
-                                        break;
-                                    case 4:
-                                        suzh2Box = new ComboBox() { ItemsSource = App.dBcontext.oilvilocityfields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh2Box, 4);
-                                        Grid.SetColumn(suzh2Box, 1);
-                                        grid.Children.Add(suzh2Box);
-                                        break;
-
-                                }
-                                grid.Children.Remove((TextBox)sender);
-                                break;
-                            case "Антифриз":
-                                switch (Grid.GetRow(sender as TextBox))
-                                {
-                                    case 2:
-                                        suzh1Box = new ComboBox() { ItemsSource = App.dBcontext.antifreezecolorfields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh1Box, 2);
-                                        Grid.SetColumn(suzh1Box, 1);
-                                        grid.Children.Add(suzh1Box);
-                                        break;
-                                    case 3:
-                                        suzh2Box = new ComboBox() { ItemsSource = App.dBcontext.antifreezebrandfields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh2Box, 3);
-                                        Grid.SetColumn(suzh2Box, 1);
-                                        grid.Children.Add(suzh2Box);
-                                        break;
-                                    case 4:
-                                        suzh2Box = new ComboBox() { ItemsSource = App.dBcontext.antifreezetypefields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh2Box, 4);
-                                        Grid.SetColumn(suzh2Box, 1);
-                                        grid.Children.Add(suzh2Box);
-                                        break;
-
-                                }
-                                grid.Children.Remove((TextBox)sender);
-                                break;
-                            case "Смазка":
-                                switch (Grid.GetRow(sender as TextBox))
-                                {
-                                    case 2:
-                                        suzh1Box = new ComboBox() { ItemsSource = App.dBcontext.greasebrandfields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh1Box, 2);
-                                        Grid.SetColumn(suzh1Box, 1);
-                                        grid.Children.Add(suzh1Box);
-                                        break;
-                                    case 3:
-                                        suzh2Box = new ComboBox() { ItemsSource = App.dBcontext.greasetypefields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh2Box, 3);
-                                        Grid.SetColumn(suzh2Box, 1);
-                                        grid.Children.Add(suzh2Box);
-                                        break;
-                                    case 4:
-                                        suzh2Box = new ComboBox() { ItemsSource = App.dBcontext.greasevilocityfields.Select(s => s.name).ToList() };
-                                        Grid.SetRow(suzh2Box, 4);
-                                        Grid.SetColumn(suzh2Box, 1);
-                                        grid.Children.Add(suzh2Box);
-                                        break;
-
-                                }
-                                grid.Children.Remove((TextBox)sender);
-                                break;
-                        }
-                }
-            
-        }
-        
+        // ─── Переключение типа расходника ───────────────────────────────────────
 
         private void Combo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            suzhcombobox1.IsEnabled = true;
-            suzhcombobox2.IsEnabled = true;
-            suzhcombobox3.IsEnabled = true;
-            suzhtextbox1.IsEnabled = true;
-            suzhtextbox2.IsEnabled = true;
-            suzhtextbox3.IsEnabled = true;
-            but1.IsEnabled = true; 
-            but2.IsEnabled = true;
-            but3.IsEnabled = true;
+            try
+            {
+                // Сбрасываем все в активное состояние
+                bool isFilter = combo.SelectedIndex == 3;
+                suzh1.IsEnabled = !isFilter;
+                suzh2.IsEnabled = !isFilter;
+                suzh3.IsEnabled = !isFilter;
+                suzhcombobox1.IsEnabled = !isFilter;
+                suzhcombobox2.IsEnabled = !isFilter;
+                suzhcombobox3.IsEnabled = !isFilter;
+                suzhtextbox1.IsEnabled = !isFilter;
+                suzhtextbox2.IsEnabled = !isFilter;
+                suzhtextbox3.IsEnabled = !isFilter;
+                but1.IsEnabled = !isFilter;
+                but2.IsEnabled = !isFilter;
+                but3.IsEnabled = !isFilter;
+                filterTextBox.IsEnabled = isFilter;
 
                 switch (combo.SelectedIndex)
                 {
-                    case 0:
-                        //await App.dBcontext.Oil.AddAsync(new Oil() { Name = namepropduct.Text });
+                    case 0: // Масло
                         suzh1.Text = "Тип (Пример: 'Гидравлическое')";
                         suzh2.Text = "Марка (Пример: 'XCMG_Г')";
                         suzh3.Text = "Вязкость (Пример: 'HVLP_46')";
-                        suzhcombobox1.ItemsSource = App.dBcontext.oiltypefields.Select(s => s.name).ToList();
-                        suzhcombobox2.ItemsSource = App.dBcontext.oilbrandfields.Select(s => s.name).ToList();
-                        suzhcombobox3.ItemsSource = App.dBcontext.oilvilocityfields.Select(s => s.name).ToList();
-                        filterTextBox.IsEnabled = false;
-
+                        suzhcombobox1.ItemsSource = App.dBcontext.oiltypefields?.Select(s => s.name).ToList();
+                        suzhcombobox2.ItemsSource = App.dBcontext.oilbrandfields?.Select(s => s.name).ToList();
+                        suzhcombobox3.ItemsSource = App.dBcontext.oilvilocityfields?.Select(s => s.name).ToList();
                         break;
-                    case 1:
-                        // App.dBcontext.Antifreeze.AddAsync(new Antifreeze() { Name = namepropduct.Text });
+                    case 1: // Антифриз
                         suzh1.Text = "Цвет (Пример: 'Красный')";
                         suzh2.Text = "Марка (Пример: 'Лукойл')";
                         suzh3.Text = "Тип (Пример: 'G_12')";
-                        suzhcombobox1.ItemsSource = App.dBcontext.antifreezecolorfields.Select(s => s.name).ToList();
-                        suzhcombobox2.ItemsSource = App.dBcontext.antifreezebrandfields.Select(s => s.name).ToList();
-                        suzhcombobox3.ItemsSource = App.dBcontext.antifreezetypefields.Select(s => s.name).ToList();
-                        filterTextBox.IsEnabled = false;
+                        suzhcombobox1.ItemsSource = App.dBcontext.antifreezecolorfields?.Select(s => s.name).ToList();
+                        suzhcombobox2.ItemsSource = App.dBcontext.antifreezebrandfields?.Select(s => s.name).ToList();
+                        suzhcombobox3.ItemsSource = App.dBcontext.antifreezetypefields?.Select(s => s.name).ToList();
                         break;
-                    case 2:
-                        //await App.dBcontext.Grease.AddAsync(new Grease() { Name = namepropduct.Text });
+                    case 2: // Смазка
                         suzh1.Text = "Марка (Пример: 'TESMA')";
                         suzh2.Text = "Тип (Пример: 'Смазка_стрелы_T')";
                         suzh3.Text = "Вязкость (Пример: 'MC_4217_2p')";
-                        suzhcombobox1.ItemsSource = App.dBcontext.greasebrandfields.Select(s => s.name).ToList();
-                        suzhcombobox2.ItemsSource = App.dBcontext.greasetypefields.Select(s => s.name).ToList();
-                        suzhcombobox3.ItemsSource = App.dBcontext.greasevilocityfields.Select(s => s.name).ToList();
-                        filterTextBox.IsEnabled = false;
+                        suzhcombobox1.ItemsSource = App.dBcontext.greasebrandfields?.Select(s => s.name).ToList();
+                        suzhcombobox2.ItemsSource = App.dBcontext.greasetypefields?.Select(s => s.name).ToList();
+                        suzhcombobox3.ItemsSource = App.dBcontext.greasevilocityfields?.Select(s => s.name).ToList();
                         break;
-                    case 3:
-                        //await App.dBcontext.Filter.AddAsync(new Filter() { Name = namepropduct.Text });
-                        suzh1.IsEnabled = false;
-                        suzh2.IsEnabled = false;
-                        suzh3.IsEnabled = false;
-                        suzhcombobox1.IsEnabled = false;
-                        suzhcombobox2.IsEnabled = false;
-                        suzhcombobox3.IsEnabled = false;
-                        suzhtextbox1.IsEnabled = false;
-                        suzhtextbox2.IsEnabled = false;
-                        suzhtextbox3.IsEnabled = false;
-                        but1.IsEnabled = false;
-                        but2.IsEnabled = false;
-                        but3.IsEnabled = false;
-                        filterTextBox.IsEnabled = true;
-                        break;
-
                 }
-            
-        }
-        public string GetText(UIElement el)
-        {
-            if(el is TextBox text)
-            {
-                return text.Text;
             }
-            if(el is ComboBox combo)
+            catch (Exception ex)
             {
-                return combo.Text;
-            }
-            return "";
-        }
-        private async void Button_Click(object sender, RoutedEventArgs e)
-        {
-
-            {
-                var suzhitog1 = GetText(suzhtextbox1) == "" ? GetText(suzhcombobox1) : GetText(suzhtextbox1);
-                var suzhitog2 = GetText(suzhtextbox2) == "" ? GetText(suzhcombobox2) : GetText(suzhtextbox2);
-                var suzhitog3 = GetText(suzhtextbox3) == "" ? GetText(suzhcombobox3) : GetText(suzhtextbox3);
-
-                switch (combo.SelectedIndex)
-                {
-                    case 0:
-                        var typeoil = App.dBcontext.oiltypefields.Where(s => s.name == suzhitog1);
-                        var brandoil = App.dBcontext.oilbrandfields.Where(s => s.name == suzhitog2);
-                        var viscooil = App.dBcontext.oilvilocityfields.Where(s => s.name == suzhitog3);
-                        int idtypeoil = 0;
-                        int idbrandoil = 0;
-                        int idviscooil = 0;
-                        if (typeoil.Count() != 0)
-                        {
-                            idtypeoil = typeoil.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.oiltypefields.AddAsync(new Oiltypefields() { name = suzhitog1, code = 0 });
-                            await App.dBcontext.SaveChangesAsync();
-                            App.dBcontext.oiltypefields.Where(s => s.name == suzhitog1).First().code = App.dBcontext.oiltypefields.Where(s => s.name == suzhitog1).First().Id;
-                            idtypeoil = App.dBcontext.oiltypefields.Where(s => s.name == suzhitog1).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        if (brandoil.Count() != 0)
-                        {
-                            idbrandoil = brandoil.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.oilbrandfields.AddAsync(new Oilbrandfields() { name = suzhitog2, code = idtypeoil });
-                            await App.dBcontext.SaveChangesAsync();
-                            //App.dBcontext.oilbrandfields.Where(s => s.name == suzhitog2).First().code = idtypeoil;
-                            idbrandoil = App.dBcontext.oilbrandfields.Where(s => s.name == suzhitog2).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        if (viscooil.Count() != 0)
-                        {
-                            idviscooil = viscooil.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.oilvilocityfields.AddAsync(new Oilvilocityfields() { name = suzhitog3, code = idbrandoil });
-                            await App.dBcontext.SaveChangesAsync();
-                            //App.dBcontext.oilvilocityfields.Where(s => s.name == suzhitog3).First().code = idbrandoil;
-                            idviscooil = App.dBcontext.oilvilocityfields.Where(s => s.name == suzhitog3).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        App.dBcontext.Oil.Add(new Oil() { Name = suzhitog1 + "_" + suzhitog2 + "_" + suzhitog3 });
-                        await App.dBcontext.SaveChangesAsync();
-                        try
-                        {
-                            //await SignalRClient.SendNotificationAsync($"0x05|Добавлено новое масло {suzhitog1 + "_" + suzhitog2 + "_" + suzhitog3}|Новое");
-                        }
-                        catch (Exception ex)
-                        {
-
-                        }
-                        break;
-                    case 1:
-                        var coloranti = App.dBcontext.antifreezecolorfields.Where(s => s.name == suzhitog1);
-                        var brandanti = App.dBcontext.antifreezebrandfields.Where(s => s.name == suzhitog2);
-                        var typeanti = App.dBcontext.antifreezetypefields.Where(s => s.name == suzhitog3);
-                        int idtypeanti = 0;
-                        int idbrandanti = 0;
-                        int idcoloranti = 0;
-                        if (coloranti.Count() != 0)
-                        {
-                            idcoloranti = coloranti.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.antifreezecolorfields.AddAsync(new Antifreezecolorfields() { name = suzhitog1, code = 0 });
-                            await App.dBcontext.SaveChangesAsync();
-                            App.dBcontext.antifreezecolorfields.Where(s => s.name == suzhitog1).First().code = App.dBcontext.antifreezecolorfields.Where(s => s.name == suzhitog1).First().Id;
-                            idcoloranti = App.dBcontext.antifreezecolorfields.Where(s => s.name == suzhitog1).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        if (brandanti.Count() != 0)
-                        {
-                            idbrandanti = brandanti.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.antifreezebrandfields.AddAsync(new Antifreezebrandfields() { name = suzhitog2, code = idcoloranti });
-                            await App.dBcontext.SaveChangesAsync();
-                            //App.dBcontext.antifreezebrandfields.Where(s => s.name == suzhitog2).First().code = idcoloranti;
-                            idbrandoil = App.dBcontext.oilbrandfields.Where(s => s.name == suzhitog2).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        if (typeanti.Count() != 0)
-                        {
-                            idtypeanti = typeanti.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.antifreezetypefields.AddAsync(new Antifreezetypefields() { name = suzhitog3, code =  idbrandanti });
-                            await App.dBcontext.SaveChangesAsync();
-                            //App.dBcontext.antifreezetypefields.Where(s => s.name == suzhitog3).First().code = idbrandanti;
-                            idtypeanti = App.dBcontext.antifreezetypefields.Where(s => s.name == suzhitog3).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        App.dBcontext.Antifreeze.Add(new Antifreeze() { Name = suzhitog1 + "_" + suzhitog2 + "_" + suzhitog3 });
-                        await App.dBcontext.SaveChangesAsync();
-                        try
-                        {
-                            //await SignalRClient.SendNotificationAsync($"0x05|Добавлен новый антифриз {suzhitog1 + "_" + suzhitog2 + "_" + suzhitog3}|Новое");
-                        }
-                        catch (Exception ex)
-                        {
-
-                        }
-                        break;
-                    case 2:
-                        var typegrease = App.dBcontext.oiltypefields.Where(s => s.name == suzhitog1);
-                        var brandgrease = App.dBcontext.oilbrandfields.Where(s => s.name == suzhitog2);
-                        var viscogrease = App.dBcontext.oilvilocityfields.Where(s => s.name == suzhitog3);
-                        int idtypegrease = 0;
-                        int idbrandgrease = 0;
-                        int idviscogrease = 0;
-                        if (typegrease.Count() != 0)
-                        {
-                            idtypegrease = typegrease.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.oiltypefields.AddAsync(new Oiltypefields() { name = suzhitog1, code = 0 });
-                            await App.dBcontext.SaveChangesAsync();
-                            App.dBcontext.oiltypefields.Where(s => s.name == suzhitog1).First().code = App.dBcontext.oiltypefields.Where(s => s.name == suzhitog1).First().Id;
-                            idtypegrease = App.dBcontext.oiltypefields.Where(s => s.name == suzhitog1).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        if (brandgrease.Count() != 0)
-                        {
-                            idbrandgrease = brandgrease.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.oilbrandfields.AddAsync(new Oilbrandfields() { name = suzhitog2, code = idtypegrease });
-                            await App.dBcontext.SaveChangesAsync();
-                            //App.dBcontext.oilbrandfields.Where(s => s.name == suzhitog2).First().code = idtypegrease;
-                            idbrandgrease = App.dBcontext.oilbrandfields.Where(s => s.name == suzhitog2).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        if (viscogrease.Count() != 0)
-                        {
-                            idviscogrease = viscogrease.First().Id;
-                        }
-                        else
-                        {
-                            await App.dBcontext.oilvilocityfields.AddAsync(new Oilvilocityfields() { name = suzhitog3, code = idbrandgrease });
-                            await App.dBcontext.SaveChangesAsync();
-                            //App.dBcontext.oilvilocityfields.Where(s => s.name == suzhitog3).First().code = idbrandgrease;
-                            idviscogrease = App.dBcontext.oilvilocityfields.Where(s => s.name == suzhitog3).First().Id;
-                            await App.dBcontext.SaveChangesAsync();
-                        }
-                        App.dBcontext.Grease.Add(new Grease() { Name = suzhitog1 + "_" + suzhitog2 + "_" + suzhitog3 });
-                        await App.dBcontext.SaveChangesAsync();
-                        try
-                        {
-                            //await SignalRClient.SendNotificationAsync($"0x05|Добавлена новая смазка {suzhitog1 + "_" + suzhitog2 + "_" + suzhitog3}|Новое");
-                        }
-                        catch (Exception ex)
-                        {
-
-                        }
-                        break;
-                    case 3:
-                        if (filterTextBox.IsEnabled)
-                        {
-                            App.dBcontext.Filter.Add(new Filter() { Name = filterTextBox.Text });
-                        }
-                        await App.dBcontext.SaveChangesAsync();
-                        try
-                        {
-                            //await SignalRClient.SendNotificationAsync($"0x05|Добавлен новый фильтр {filterTextBox.Text}|Новое");
-                        }
-                        catch (Exception ex)
-                        {
-
-                        }
-                        break;
-
-                }
-                
-                //if (App.dBcontext.)
-                
-                //await App.dBcontext.SaveChangesAsync();
+                Debug.WriteLine($"[AddPage] Ошибка при переключении типа: {ex.Message}");
             }
         }
+
+        // ─── Переключение TextBox ↔ ComboBox по кнопке ────────────────────────
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
             var row = Grid.GetRow(sender as Button);
-            //var column = Grid.GetColumn(sender as Button);
-            switch (row)
+            ToggleInputMode(row);
+        }
+
+        private void ToggleInputMode(int row)
+        {
+            (ComboBox combo, TextBox text) = row switch
             {
-                case 2:
+                2 => (suzhcombobox1, suzhtextbox1),
+                3 => (suzhcombobox2, suzhtextbox2),
+                4 => (suzhcombobox3, suzhtextbox3),
+                _ => (null, null)
+            };
+            if (combo == null) return;
 
-                    if (suzhcombobox1.IsEnabled)
-                    {
+            bool useCombo = combo.IsEnabled;
+            combo.IsEnabled = !useCombo;
+            text.IsEnabled = useCombo;
+            Grid.SetZIndex(combo, useCombo ? 0 : 1);
+            Grid.SetZIndex(text, useCombo ? 1 : 0);
+        }
 
-                        suzhtextbox1.IsEnabled = true;
-                        suzhcombobox1.IsEnabled = false;
-                        Grid.SetZIndex(suzhtextbox1, 1);
-                        Grid.SetZIndex(suzhcombobox1, 0);
-                    }
-                    else
-                    {
-                        suzhtextbox1.IsEnabled = false;
-                        suzhcombobox1.IsEnabled = true;
-                        Grid.SetZIndex(suzhtextbox1, 0);
-                        Grid.SetZIndex(suzhcombobox1, 1);
-                    }
-                    break;
-                case 3:
-                    if (suzhcombobox2.IsEnabled)
-                    {
+        // ─── Вспомогательный метод получения текста из поля ───────────────────
 
-                        suzhtextbox2.IsEnabled = true;
-                        suzhcombobox2.IsEnabled = false;
-                        Grid.SetZIndex(suzhtextbox2, 1);
-                        Grid.SetZIndex(suzhcombobox2, 0);
-                    }
-                    else
-                    {
-                        suzhtextbox2.IsEnabled = false;
-                        suzhcombobox2.IsEnabled = true;
-                        Grid.SetZIndex(suzhtextbox2, 0);
-                        Grid.SetZIndex(suzhcombobox2, 1);
-                    }
-                    break;
-                case 4:
-                    if (suzhcombobox3.IsEnabled)
-                    {
+        private string GetText(UIElement el) => el switch
+        {
+            TextBox tb => tb.Text,
+            ComboBox cb => cb.Text,
+            _ => ""
+        };
 
-                        suzhtextbox3.IsEnabled = true;
-                        suzhcombobox3.IsEnabled = false;
-                        Grid.SetZIndex(suzhtextbox3, 1);
-                        Grid.SetZIndex(suzhcombobox3, 0);
-                    }
-                    else
-                    {
-                        suzhtextbox3.IsEnabled = false;
-                        suzhcombobox3.IsEnabled = true;
-                        Grid.SetZIndex(suzhtextbox3, 0);
-                        Grid.SetZIndex(suzhcombobox3, 1);
-                    }
-                    break;
+        // ─── Кнопка «Добавить» ─────────────────────────────────────────────────
+
+        private async void Button_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var s1 = GetText(suzhtextbox1.IsEnabled ? (UIElement)suzhtextbox1 : suzhcombobox1);
+                var s2 = GetText(suzhtextbox2.IsEnabled ? (UIElement)suzhtextbox2 : suzhcombobox2);
+                var s3 = GetText(suzhtextbox3.IsEnabled ? (UIElement)suzhtextbox3 : suzhcombobox3);
+
+                switch (combo.SelectedIndex)
+                {
+                    case 0: await AddOilAsync(s1, s2, s3); break;
+                    case 1: await AddAntifreezeAsync(s1, s2, s3); break;
+                    case 2: await AddGreaseAsync(s1, s2, s3); break;
+                    case 3: await AddFilterAsync(); break;
+                }
+
+                MessageBox.Show("Расходник успешно добавлен!", "Успех",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AddPage] Ошибка добавления: {ex.Message}");
+                MessageBox.Show($"Ошибка при добавлении: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ─── Масло ─────────────────────────────────────────────────────────────
+
+        private async Task AddOilAsync(string typeName, string brandName, string viscoName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName) || string.IsNullOrWhiteSpace(brandName))
+                throw new InvalidOperationException("Укажите тип и марку масла.");
+
+            var typeField = App.dBcontext.oiltypefields.FirstOrDefault(s => s.name == typeName);
+            if (typeField == null)
+            {
+                typeField = new Oiltypefields { name = typeName, code = 0 };
+                await App.dBcontext.oiltypefields.AddAsync(typeField);
+                await App.dBcontext.SaveChangesAsync();
+                typeField.code = typeField.Id;
+                await App.dBcontext.SaveChangesAsync();
             }
 
+            var brandField = App.dBcontext.oilbrandfields.FirstOrDefault(s => s.name == brandName);
+            if (brandField == null)
+            {
+                brandField = new Oilbrandfields { name = brandName, code = typeField.Id };
+                await App.dBcontext.oilbrandfields.AddAsync(brandField);
+                await App.dBcontext.SaveChangesAsync();
+            }
+
+            if (!string.IsNullOrWhiteSpace(viscoName))
+            {
+                var viscoField = App.dBcontext.oilvilocityfields.FirstOrDefault(s => s.name == viscoName);
+                if (viscoField == null)
+                {
+                    await App.dBcontext.oilvilocityfields.AddAsync(
+                        new Oilvilocityfields { name = viscoName, code = brandField.Id });
+                    await App.dBcontext.SaveChangesAsync();
+                }
+            }
+
+            var oilName = typeName + "_" + brandName + (string.IsNullOrWhiteSpace(viscoName) ? "" : "_" + viscoName);
+            App.dBcontext.Oil.Add(new Oil { Name = oilName });
+            await App.dBcontext.SaveChangesAsync();
+        }
+
+        // ─── Антифриз ──────────────────────────────────────────────────────────
+
+        private async Task AddAntifreezeAsync(string colorName, string brandName, string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(colorName) || string.IsNullOrWhiteSpace(brandName))
+                throw new InvalidOperationException("Укажите цвет и марку антифриза.");
+
+            var colorField = App.dBcontext.antifreezecolorfields.FirstOrDefault(s => s.name == colorName);
+            if (colorField == null)
+            {
+                colorField = new Antifreezecolorfields { name = colorName, code = 0 };
+                await App.dBcontext.antifreezecolorfields.AddAsync(colorField);
+                await App.dBcontext.SaveChangesAsync();
+                colorField.code = colorField.Id;
+                await App.dBcontext.SaveChangesAsync();
+            }
+
+            var brandField = App.dBcontext.antifreezebrandfields.FirstOrDefault(s => s.name == brandName);
+            if (brandField == null)
+            {
+                brandField = new Antifreezebrandfields { name = brandName, code = colorField.Id };
+                await App.dBcontext.antifreezebrandfields.AddAsync(brandField);
+                await App.dBcontext.SaveChangesAsync();
+            }
+
+            if (!string.IsNullOrWhiteSpace(typeName))
+            {
+                var typeField = App.dBcontext.antifreezetypefields.FirstOrDefault(s => s.name == typeName);
+                if (typeField == null)
+                {
+                    await App.dBcontext.antifreezetypefields.AddAsync(
+                        new Antifreezetypefields { name = typeName, code = brandField.Id });
+                    await App.dBcontext.SaveChangesAsync();
+                }
+            }
+
+            var antiName = colorName + "_" + brandName + (string.IsNullOrWhiteSpace(typeName) ? "" : "_" + typeName);
+            App.dBcontext.Antifreeze.Add(new Antifreeze { Name = antiName });
+            await App.dBcontext.SaveChangesAsync();
+        }
+
+        // ─── Смазка ────────────────────────────────────────────────────────────
+
+        private async Task AddGreaseAsync(string brandName, string typeName, string viscoName)
+        {
+            if (string.IsNullOrWhiteSpace(brandName))
+                throw new InvalidOperationException("Укажите марку смазки.");
+
+            var brandField = App.dBcontext.greasebrandfields.FirstOrDefault(s => s.name == brandName);
+            if (brandField == null)
+            {
+                brandField = new Greasebrandfields { name = brandName, code = 0 };
+                await App.dBcontext.greasebrandfields.AddAsync(brandField);
+                await App.dBcontext.SaveChangesAsync();
+                brandField.code = brandField.Id;
+                await App.dBcontext.SaveChangesAsync();
+            }
+
+            var typeField = App.dBcontext.greasetypefields.FirstOrDefault(s => s.name == typeName);
+            if (typeField == null && !string.IsNullOrWhiteSpace(typeName))
+            {
+                typeField = new Greasetypefields { name = typeName, code = brandField.Id };
+                await App.dBcontext.greasetypefields.AddAsync(typeField);
+                await App.dBcontext.SaveChangesAsync();
+            }
+
+            if (!string.IsNullOrWhiteSpace(viscoName))
+            {
+                var viscoField = App.dBcontext.greasevilocityfields.FirstOrDefault(s => s.name == viscoName);
+                if (viscoField == null)
+                {
+                    await App.dBcontext.greasevilocityfields.AddAsync(
+                        new Greasevilocityfields { name = viscoName, code = typeField?.Id ?? brandField.Id });
+                    await App.dBcontext.SaveChangesAsync();
+                }
+            }
+
+            var greaseName = brandName
+                + (string.IsNullOrWhiteSpace(typeName) ? "" : "_" + typeName)
+                + (string.IsNullOrWhiteSpace(viscoName) ? "" : "_" + viscoName);
+            App.dBcontext.Grease.Add(new Grease { Name = greaseName });
+            await App.dBcontext.SaveChangesAsync();
+        }
+
+        // ─── Фильтр ────────────────────────────────────────────────────────────
+
+        private async Task AddFilterAsync()
+        {
+            var name = filterTextBox.Text?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidOperationException("Введите название фильтра.");
+
+            App.dBcontext.Filter.Add(new Filter { Name = name });
+            await App.dBcontext.SaveChangesAsync();
         }
     }
-
 }
