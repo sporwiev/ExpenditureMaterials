@@ -13,8 +13,6 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="16"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="12"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
@@ -26,19 +24,25 @@
 
         <!-- Фильтры -->
         <ui:Card Grid.Row="2" Padding="16">
-            <WrapPanel Orientation="Horizontal">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                <StackPanel Margin="0,0,20,0">
+                <StackPanel Grid.Column="0" Margin="0,0,20,0">
                     <TextBlock Text="Год" FontWeight="Medium" Margin="0,0,0,4"/>
                     <ComboBox x:Name="ComboBoxYear" Width="110"/>
                 </StackPanel>
 
-                <StackPanel Margin="0,0,20,0">
+                <StackPanel Grid.Column="1" Margin="0,0,20,0">
                     <TextBlock Text="Месяц" FontWeight="Medium" Margin="0,0,0,4"/>
                     <ComboBox x:Name="ComboBoxMonth" Width="130"/>
                 </StackPanel>
 
-                <StackPanel>
+                <StackPanel Grid.Column="2" Margin="0,0,20,0">
                     <TextBlock Text="Тип расходника" FontWeight="Medium" Margin="0,0,0,4"/>
                     <ComboBox x:Name="TypeProductComboBox"
                               Width="160"
@@ -51,31 +55,19 @@
                     </ComboBox>
                 </StackPanel>
 
-            </WrapPanel>
+                <!-- Название выбранного типа — справа в карточке -->
+                <TextBlock x:Name="typeproduct"
+                           Grid.Column="3"
+                           Text=""
+                           FontSize="15" FontWeight="Medium"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Foreground="#2E7D32"/>
+            </Grid>
         </ui:Card>
 
-        <!-- Статистика -->
-        <Border Grid.Row="4"
-                Background="#EDF7ED" CornerRadius="8" Padding="14,10">
-            <StackPanel Orientation="Horizontal">
-                <ui:SymbolIcon Symbol="DataHistogram24"
-                               FontSize="18" Margin="0,0,10,0"
-                               Foreground="#2E7D32"/>
-                <TextBlock x:Name="typeproduct"
-                           Text="—"
-                           FontSize="16" FontWeight="Medium"
-                           VerticalAlignment="Center"
-                           Foreground="#2E7D32"/>
-                <TextBlock Text="  |  " Foreground="Gray" VerticalAlignment="Center"/>
-                <TextBlock x:Name="sum"
-                           FontSize="13"
-                           VerticalAlignment="Center"
-                           Foreground="#555"/>
-            </StackPanel>
-        </Border>
-
         <!-- График -->
-        <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
             <controls:Charts x:Name="MyChart"/>
         </ScrollViewer>
 

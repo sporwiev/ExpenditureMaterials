@@ -18,6 +18,13 @@ namespace BifServiceExpenditureMaterials.Views.Pages
         // Флаг — предотвращает рекурсивные вызовы при программном изменении ComboBox
         private bool _refreshing = false;
 
+        // Допустимые названия месяцев в БД (для фильтрации мусорных значений)
+        private static readonly HashSet<string> ValidMonthNames = new()
+        {
+            "Январь","Февраль","Март","Апрель","Май","Июнь",
+            "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"
+        };
+
         public AnalitickPage()
         {
             InitializeComponent();
@@ -184,21 +191,13 @@ namespace BifServiceExpenditureMaterials.Views.Pages
                 var selectedMonth = ComboBoxMonth.SelectedItem as string ?? "";
                 var typeIndex = TypeProductComboBox.SelectedIndex;
 
-                // Статус-строка
-                var prevMonthName  = GetMonthOffset(-1);
-                var prev2MonthName = GetMonthOffset(-2);
-                long sumPrev  = SumByMonth(typeIndex, year, prevMonthName);
-                long sumPrev2 = SumByMonth(typeIndex, year, prev2MonthName);
-
-                sum.Text = $"Потреблено за {prev2MonthName}: {sumPrev2}  |  за {prevMonthName}: {sumPrev}";
-
                 typeproduct.Text = typeIndex switch
                 {
                     1 => "🛢 Масло (л)",
                     2 => "❄ Антифриз (л)",
                     3 => "🔧 Смазка (кг)",
                     4 => "🔩 Фильтры (шт)",
-                    _ => "—"
+                    _ => ""
                 };
 
                 List<int?, string?, string?, string?> oldValues;
@@ -213,6 +212,8 @@ namespace BifServiceExpenditureMaterials.Views.Pages
                 else
                 {
                     // "Все месяцы" — сравниваем два предыдущих месяца
+                    var prevMonthName  = GetMonthOffset(-1);
+                    var prev2MonthName = GetMonthOffset(-2);
                     oldValues = BuildValues(typeIndex, year, prev2MonthName);
                     newValues = BuildValues(typeIndex, year, prevMonthName);
                 }
@@ -285,12 +286,14 @@ namespace BifServiceExpenditureMaterials.Views.Pages
 
         /// <summary>
         /// Сортирует список названий месяцев в календарном порядке.
+        /// Отсеивает нестандартные значения (например "12 Марта") — только чистые названия месяцев.
         /// </summary>
         private static List<string> OrderedMonths(IEnumerable<string?> rawMonths)
         {
             return rawMonths
-                .Where(m => !string.IsNullOrEmpty(m))
+                .Where(m => !string.IsNullOrEmpty(m) && ValidMonthNames.Contains(m!))
                 .Select(m => m!)
+                .Distinct()
                 .OrderBy(m => Other.GetMouthNumber(m))
                 .ToList();
         }

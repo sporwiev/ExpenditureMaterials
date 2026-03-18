@@ -164,22 +164,18 @@ namespace BifServiceExpenditureMaterials.Controls
             // Рисуем точки с цветом в зависимости от значения
             for (int i = 0; i < _valuesOldMonth.Count; i++)
             {
-                ToolTip tool = new ToolTip();
-                tool.Content = "Дата: " + (_valuesOldMonth[i].Item3 == null ? "" : _valuesOldMonth[i].Item3) + "\r\nМашина:" + (_valuesOldMonth[i].Item2 == null ? "" : _valuesOldMonth[i].Item2) + "\r\nИспользовано продукта: " + (_valuesOldMonth[i].Item1 == null ? "" : _valuesOldMonth[i].Item1);
                 var value = _valuesOldMonth[i];
                 Ellipse ellipse = new Ellipse
                 {
-                    
                     Width = 12,
                     Height = 12,
                     Stroke = Brushes.Black,
                     StrokeThickness = 1,
                     Fill = GetColorForValue((double)value.Item1, minValOld, maxValOld),
-                    ToolTip = tool,
-                    //RenderTransform = ScaleTransformLineEllipse
+                    ToolTip = BuildTooltip(value.Item1, value.Item2, value.Item3),
+                    Cursor = Cursors.Hand
                 };
-                ellipse.MouseRightButtonDown += (sender, e) => Ellipse_MouseRightButtonDown(sender,e, value.Item2, value.Item3,value.Item4);
-                
+                ellipse.MouseRightButtonDown += (sender, e) => Ellipse_MouseRightButtonDown(sender, e, value.Item2, value.Item3, value.Item4);
 
                 double cx = margin + i * stepXOld;
                 double cy = valueToYOld((double)value.Item1);
@@ -191,22 +187,18 @@ namespace BifServiceExpenditureMaterials.Controls
             }
             for (int i = 0; i < _valuesNewMonth.Count; i++)
             {
-                ToolTip tool = new ToolTip();
-                tool.Content = "Дата: " + (_valuesNewMonth[i].Item3 == null ? "" : _valuesNewMonth[i].Item3) + "\r\nМашина:" + (_valuesNewMonth[i].Item2 == null ? "" : _valuesNewMonth[i].Item2) + "\r\nИспользовано продукта: " + (_valuesNewMonth[i].Item1 == null ? "" : _valuesNewMonth[i].Item1);
                 var value = _valuesNewMonth[i];
                 Ellipse ellipse = new Ellipse
                 {
-
                     Width = 12,
                     Height = 12,
                     Stroke = Brushes.Black,
                     StrokeThickness = 1,
                     Fill = GetColorForValue((double)value.Item1, minValNew, maxValNew),
-                    ToolTip = tool,
-                    //RenderTransform = ScaleTransformLineEllipse
+                    ToolTip = BuildTooltip(value.Item1, value.Item2, value.Item3),
+                    Cursor = Cursors.Hand
                 };
                 ellipse.MouseRightButtonDown += (sender, e) => Ellipse_MouseRightButtonDown(sender, e, value.Item2, value.Item3, value.Item4);
-
 
                 double cx = margin + i * stepXNew;
                 double cy = valueToYNew((double)value.Item1);
@@ -241,6 +233,44 @@ namespace BifServiceExpenditureMaterials.Controls
             //var datagrid = HomePage.GetTable().Datagrid;
             //HomePage._home.UpdateData(HomePage.GetTabItemByHeader(HomePage.tab, BifServiceExpenditureMaterials.Helpers.Other.GetMouthNumber(DateTime.Now.Month)), true);
             //HomePage.GetTable().SearchCell(datagrid, Convert.ToInt32(Ячейка.Split(":")[0]), Convert.ToInt32(Ячейка.Split(":")[1]));
+        }
+
+        // ─── Тултип при наведении на точку ────────────────────────────────────────
+
+        private static ToolTip BuildTooltip(int? amount, string? machine, string? date)
+        {
+            var panel = new StackPanel { Margin = new Thickness(4) };
+
+            void AddRow(string icon, string label, string? val)
+            {
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 1, 0, 1) };
+                row.Children.Add(new TextBlock
+                {
+                    Text = $"{icon} {label}: ",
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brushes.DimGray
+                });
+                row.Children.Add(new TextBlock
+                {
+                    Text = val ?? "—",
+                    Foreground = Brushes.Black
+                });
+                panel.Children.Add(row);
+            }
+
+            AddRow("📅", "Дата",     date);
+            AddRow("🚗", "Машина",   machine);
+            AddRow("📦", "Кол-во",   amount?.ToString() ?? "—");
+
+            return new ToolTip
+            {
+                Content = panel,
+                Background = Brushes.White,
+                BorderBrush = new SolidColorBrush(Color.FromRgb(200, 210, 220)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(6),
+                HasDropShadow = true
+            };
         }
 
         // Логика определения цвета точки по значению
