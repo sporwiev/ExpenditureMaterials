@@ -4,15 +4,20 @@ using BifServiceExpenditureMaterials.Controls;
 using BifServiceExpenditureMaterials.Database;
 using BifServiceExpenditureMaterials.Helpers;
 using BifServiceExpenditureMaterials.Models;
+using Microsoft.EntityFrameworkCore;
 using Other = BifServiceExpenditureMaterials.Helpers.Other;
 
 namespace BifServiceExpenditureMaterials.Views.Pages
 {
     /// <summary>
     /// Аналитика расходников: графики потребления масла, антифриза, смазки, фильтров по году/месяцу.
+    /// Фильтры (год, месяц) показывают только те периоды, где реально есть данные для выбранного типа.
     /// </summary>
     public partial class AnalitickPage : UserControl
     {
+        // Флаг — предотвращает рекурсивные вызовы при программном изменении ComboBox
+        private bool _refreshing = false;
+
         public AnalitickPage()
         {
             InitializeComponent();
@@ -25,14 +30,13 @@ namespace BifServiceExpenditureMaterials.Views.Pages
         {
             try
             {
-                ComboBoxYear.ItemsSource = new List<string> { "2023", "2024", "2025", "2026" };
-                ComboBoxMonth.ItemsSource = Other.GetAllMonths();
+                // Сначала показываем все годы из БД (тип ещё не выбран)
+                RefreshYears();
+                RefreshMonths();
 
-                ComboBoxYear.SelectedItem = DateTime.Now.Year.ToString();
-                ComboBoxMonth.SelectedIndex = 0; // пустая строка = все месяцы
-
-                ComboBoxYear.SelectionChanged += (s, e2) => RefreshChart();
-                ComboBoxMonth.SelectionChanged += (s, e2) => RefreshChart();
+                TypeProductComboBox.SelectionChanged += TypeProductComboBox_SelectionChanged;
+                ComboBoxYear.SelectionChanged += ComboBoxYear_SelectionChanged;
+                ComboBoxMonth.SelectionChanged += ComboBoxMonth_SelectionChanged;
             }
             catch (Exception ex)
             {
@@ -40,11 +44,133 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             }
         }
 
-        // ─── Смена типа расходника ─────────────────────────────────────────────
+        // ─── Обработчики фильтров ──────────────────────────────────────────────
 
         private void TypeProductComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_refreshing) return;
+            // При смене типа обновляем доступные годы и месяцы
+            RefreshYears();
+            RefreshMonths();
             RefreshChart();
+        }
+
+        private void ComboBoxYear_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_refreshing) return;
+            // При смене года обновляем доступные месяцы
+            RefreshMonths();
+            RefreshChart();
+        }
+
+        private void ComboBoxMonth_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_refreshing) return;
+            RefreshChart();
+        }
+
+        // ─── Обновление списка годов ───────────────────────────────────────────
+
+        private void RefreshYears()
+        {
+            _refreshing = true;
+            try
+            {
+                var prevYear = ComboBoxYear.SelectedItem as string;
+                var typeIndex = TypeProductComboBox.SelectedIndex; // 0=пусто,1..4
+
+                List<string> years;
+
+                if (typeIndex == 0)
+                {
+                    // Тип не выбран — все годы из БД
+                    years = App.dBcontext?.Materials?
+                        .Select(m => m.Год)
+                        .Distinct()
+                        .OrderBy(y => y)
+                        .AsEnumerable()
+                        .Select(y => y.ToString())
+                        .ToList() ?? new List<string>();
+                }
+                else
+                {
+                    // Только годы, где есть ненулевые данные по выбранному типу
+                    years = GetYearsWithData(typeIndex);
+                }
+
+                if (years.Count == 0)
+                    years.Add(DateTime.Now.Year.ToString());
+
+                ComboBoxYear.ItemsSource = years;
+
+                // Восстанавливаем выбранный год или берём текущий
+                if (prevYear != null && years.Contains(prevYear))
+                    ComboBoxYear.SelectedItem = prevYear;
+                else if (years.Contains(DateTime.Now.Year.ToString()))
+                    ComboBoxYear.SelectedItem = DateTime.Now.Year.ToString();
+                else
+                    ComboBoxYear.SelectedIndex = years.Count - 1;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnalitickPage] RefreshYears error: {ex.Message}");
+            }
+            finally
+            {
+                _refreshing = false;
+            }
+        }
+
+        // ─── Обновление списка месяцев ─────────────────────────────────────────
+
+        private void RefreshMonths()
+        {
+            _refreshing = true;
+            try
+            {
+                var prevMonth = ComboBoxMonth.SelectedItem as string;
+                var typeIndex = TypeProductComboBox.SelectedIndex;
+
+                if (!int.TryParse(ComboBoxYear.Text, out int year))
+                    year = DateTime.Now.Year;
+
+                List<string> months;
+
+                if (typeIndex == 0)
+                {
+                    // Тип не выбран — все месяцы из БД для выбранного года
+                    var monthNames = App.dBcontext?.Materials?
+                        .Where(m => m.Год == year)
+                        .Select(m => m.Месяц)
+                        .Distinct()
+                        .ToList() ?? new List<string?>();
+
+                    months = OrderedMonths(monthNames);
+                }
+                else
+                {
+                    months = GetMonthsWithData(typeIndex, year);
+                }
+
+                // Первый элемент — пустая строка "все месяцы"
+                months.Insert(0, "");
+
+                ComboBoxMonth.ItemsSource = months;
+
+                // Восстанавливаем выбранный месяц или ставим "все"
+                if (prevMonth != null && months.Contains(prevMonth))
+                    ComboBoxMonth.SelectedItem = prevMonth;
+                else
+                    ComboBoxMonth.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnalitickPage] RefreshMonths error: {ex.Message}");
+            }
+            finally
+            {
+                _refreshing = false;
+            }
         }
 
         // ─── Обновление графика ────────────────────────────────────────────────
@@ -55,20 +181,17 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             {
                 if (!int.TryParse(ComboBoxYear.Text, out int year)) return;
 
-                var selectedMonth = ComboBoxMonth.Text;
-                var typeIndex = TypeProductComboBox.SelectedIndex; // 0=пусто,1=Масло,2=Антифриз,3=Смазка,4=Фильтры
+                var selectedMonth = ComboBoxMonth.SelectedItem as string ?? "";
+                var typeIndex = TypeProductComboBox.SelectedIndex;
 
-                // Предыдущие два месяца для отображения в статусе
+                // Статус-строка
                 var prevMonthName  = GetMonthOffset(-1);
                 var prev2MonthName = GetMonthOffset(-2);
-
-                // Данные двух предыдущих месяцев (для статус-строки)
                 long sumPrev  = SumByMonth(typeIndex, year, prevMonthName);
                 long sumPrev2 = SumByMonth(typeIndex, year, prev2MonthName);
 
                 sum.Text = $"Потреблено за {prev2MonthName}: {sumPrev2}  |  за {prevMonthName}: {sumPrev}";
 
-                // Название типа для метки
                 typeproduct.Text = typeIndex switch
                 {
                     1 => "🛢 Масло (л)",
@@ -78,15 +201,20 @@ namespace BifServiceExpenditureMaterials.Views.Pages
                     _ => "—"
                 };
 
-                // Строим данные графика
-                var oldValues = BuildValues(typeIndex, year, prev2MonthName);
-                var newValues = BuildValues(typeIndex, year, prevMonthName);
+                List<int?, string?, string?, string?> oldValues;
+                List<int?, string?, string?, string?> newValues;
 
-                // Если выбран конкретный месяц — показываем только его
                 if (!string.IsNullOrEmpty(selectedMonth))
                 {
+                    // Выбран конкретный месяц — показываем только его
                     newValues = BuildValues(typeIndex, year, selectedMonth);
                     oldValues = new List<int?, string?, string?, string?>();
+                }
+                else
+                {
+                    // "Все месяцы" — сравниваем два предыдущих месяца
+                    oldValues = BuildValues(typeIndex, year, prev2MonthName);
+                    newValues = BuildValues(typeIndex, year, prevMonthName);
                 }
 
                 MyChart.ValuesOldMonth = oldValues;
@@ -99,11 +227,76 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             }
         }
 
-        // ─── Вспомогательные методы ────────────────────────────────────────────
+        // ─── Запросы к БД: что имеет данные ───────────────────────────────────
 
         /// <summary>
-        /// Возвращает название месяца смещённого на <paramref name="offset"/> от текущего.
+        /// Возвращает список годов, в которых есть ненулевые данные для указанного типа расходника.
         /// </summary>
+        private static List<string> GetYearsWithData(int typeIndex)
+        {
+            var allMaterials = App.dBcontext?.Materials?
+                .Include(m => m.CountMaterials)
+                .ToList() ?? new List<Material>();
+
+            return allMaterials
+                .Where(m => HasDataForType(m.CountMaterials, typeIndex))
+                .Select(m => m.Год)
+                .Distinct()
+                .OrderBy(y => y)
+                .Select(y => y.ToString())
+                .ToList();
+        }
+
+        /// <summary>
+        /// Возвращает список месяцев в заданном году, где есть данные для типа расходника.
+        /// Порядок — календарный.
+        /// </summary>
+        private static List<string> GetMonthsWithData(int typeIndex, int year)
+        {
+            var materials = App.dBcontext?.Materials?
+                .Include(m => m.CountMaterials)
+                .Where(m => m.Год == year)
+                .ToList() ?? new List<Material>();
+
+            var monthNames = materials
+                .Where(m => HasDataForType(m.CountMaterials, typeIndex))
+                .Select(m => m.Месяц)
+                .Distinct()
+                .ToList();
+
+            return OrderedMonths(monthNames);
+        }
+
+        /// <summary>
+        /// Возвращает true если запись CountMaterials содержит данные для указанного типа.
+        /// </summary>
+        private static bool HasDataForType(CountMaterials? cm, int typeIndex)
+        {
+            if (cm == null) return false;
+            return typeIndex switch
+            {
+                1 => !string.IsNullOrEmpty(cm.count_oil) && cm.count_oil != "0",
+                2 => (cm.count_antifreeze ?? 0) > 0,
+                3 => (cm.count_grease ?? 0) > 0,
+                4 => !string.IsNullOrEmpty(cm.count_filter) && cm.count_filter != "0",
+                _ => true  // тип не выбран — считаем что есть
+            };
+        }
+
+        /// <summary>
+        /// Сортирует список названий месяцев в календарном порядке.
+        /// </summary>
+        private static List<string> OrderedMonths(IEnumerable<string?> rawMonths)
+        {
+            return rawMonths
+                .Where(m => !string.IsNullOrEmpty(m))
+                .Select(m => m!)
+                .OrderBy(m => Other.GetMouthNumber(m))
+                .ToList();
+        }
+
+        // ─── Вспомогательные методы ────────────────────────────────────────────
+
         private static string GetMonthOffset(int offset)
         {
             var month = DateTime.Now.Month + offset;
@@ -112,9 +305,6 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             return Other.GetMouthNumber(month);
         }
 
-        /// <summary>
-        /// Считает суммарный расход расходника за месяц/год.
-        /// </summary>
         private static long SumByMonth(int typeIndex, int year, string monthName)
         {
             try
@@ -140,9 +330,6 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             }
         }
 
-        /// <summary>
-        /// Строит список точек для графика: (значение, машина, дата, ячейка).
-        /// </summary>
         private static List<int?, string?, string?, string?> BuildValues(int typeIndex, int year, string monthName)
         {
             var result = new List<int?, string?, string?, string?>();
@@ -152,6 +339,7 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             {
                 var monthNum = Other.GetMouthNumber(monthName);
                 var materials = (App.dBcontext?.Materials?
+                    .Include(m => m.CountMaterials)
                     .Where(m => m.Год == year && m.Месяц == monthName)
                     .OrderBy(m => m.Id)
                     .ToList()) ?? new List<Material>();
