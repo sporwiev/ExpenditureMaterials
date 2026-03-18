@@ -1,82 +1,149 @@
-﻿using BifServiceExpenditureMaterials.Database;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
-using System.Data.Common;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using Microsoft.EntityFrameworkCore;
 using BifServiceExpenditureMaterials.Helpers;
 using Microsoft.Win32;
 
 namespace BifServiceExpenditureMaterials.Views.Pages
 {
     /// <summary>
-    /// Логика взаимодействия для SavePage.xaml
+    /// Страница сохранения/загрузки снимков базы данных и отправки файлов другим пользователям.
     /// </summary>
     public partial class SavePage : UserControl
     {
+        private static readonly string SaveDir =
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "BifService");
+
         public SavePage()
         {
             InitializeComponent();
         }
+
+        // ─── Загрузка списка снимков ────────────────────────────────────────────
+
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            
-            //{
-            //    var files = App.dBcontext.files.OrderBy(e => e.id);
-            //    foreach (var item in files)
-            //    {
-            //        var menuContext = new MenuItem()
-            //        {
-            //            Header = "Открыть"
-            //        };
-            //        menuContext.Click += (sender, e) => MenuContext_Click(sender, e, item.fullname);
-            //        var list = new ListViewItem()
-            //        {
-            //            Content = item.name,
-            //            ContextMenu = new ContextMenu() { ItemsSource = new[] { menu } }
-            //        };
-            //        listfiles.Items.Add(list);
-            //    }
-            //}
+            RefreshFileList();
         }
 
-        private void MenuContext_Click(object sender, RoutedEventArgs e,string fullname)
+        private void RefreshFileList()
         {
-            File.Open(fullname,FileMode.Open);
-            Environment.Exit(0);
+            try
+            {
+                listfiles.Items.Clear();
+
+                if (!Directory.Exists(SaveDir))
+                {
+                    Directory.CreateDirectory(SaveDir);
+                    return;
+                }
+
+                var files = Directory.GetFiles(SaveDir, "*.bif")
+                    .OrderByDescending(f => new FileInfo(f).LastWriteTime)
+                    .ToList();
+
+                foreach (var path in files)
+                {
+                    var info = new FileInfo(path);
+                    var item = new ListBoxItem
+                    {
+                        Content = $"{info.Name}  ({info.LastWriteTime:dd.MM.yyyy HH:mm})",
+                        Tag = path,
+                        Padding = new Thickness(6, 4, 6, 4)
+                    };
+                    item.MouseDoubleClick += (s, e) => OpenSnapshot((string)((ListBoxItem)s).Tag);
+                    listfiles.Items.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SavePage] Ошибка обновления списка файлов: {ex.Message}");
+            }
         }
+
+        // ─── Открытие снимка двойным кликом ───────────────────────────────────
+
+        private void OpenSnapshot(string fullPath)
+        {
+            try
+            {
+                if (!File.Exists(fullPath))
+                {
+                    MessageBox.Show("Файл не найден.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var answer = MessageBox.Show(
+                    $"Загрузить снимок?\n{Path.GetFileName(fullPath)}",
+                    "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (answer == MessageBoxResult.Yes)
+                    SaveProject.OnDownload(fullPath);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SavePage] Ошибка открытия снимка: {ex.Message}");
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ─── Кнопка «Сохранить» ────────────────────────────────────────────────
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            var time = DateTime.Now.ToString().Replace(":", "_");
-            SaveProject.OnSave(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\BifService","Снимок_" + time + ".bif");
+            try
+            {
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                SaveProject.OnSave(SaveDir, $"Снимок_{timestamp}.bif");
+
+                MessageBox.Show("Снимок успешно сохранён.", "Сохранено",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+
+                RefreshFileList();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SavePage] Ошибка сохранения: {ex.Message}");
+                MessageBox.Show($"Ошибка сохранения: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
+
+        // ─── Кнопка «Загрузить» ────────────────────────────────────────────────
 
         private void Download_Click(object sender, RoutedEventArgs e)
         {
-            var a = "Файлы учета компании (*.bif)|*.bif";
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = a;
-            if (ofd.ShowDialog() == true) {
-                SaveProject.OnDownload(ofd.FileName);
+            try
+            {
+                var ofd = new OpenFileDialog
+                {
+                    Filter = "Файлы учёта (*.bif)|*.bif",
+                    Title = "Выберите снимок базы данных"
+                };
+
+                if (ofd.ShowDialog() == true)
+                {
+                    SaveProject.OnDownload(ofd.FileName);
+                    MessageBox.Show("База данных загружена.", "Готово",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    RefreshFileList();
+                }
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SavePage] Ошибка загрузки: {ex.Message}");
+                MessageBox.Show($"Ошибка загрузки: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ─── Кнопка «Отправить» ────────────────────────────────────────────────
+
+        private void Send_Click(object sender, RoutedEventArgs e)
+        {
+            // Функционал отправки по SignalR — заготовка
+            MessageBox.Show("Функция отправки файла пока не реализована.", "Информация",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }
-

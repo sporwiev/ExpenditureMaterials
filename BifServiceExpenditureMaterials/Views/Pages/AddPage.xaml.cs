@@ -86,8 +86,8 @@ namespace BifServiceExpenditureMaterials.Views.Pages
             (ComboBox combo, TextBox text) = row switch
             {
                 2 => (suzhcombobox1, suzhtextbox1),
-                3 => (suzhcombobox2, suzhtextbox2),
-                4 => (suzhcombobox3, suzhtextbox3),
+                4 => (suzhcombobox2, suzhtextbox2),
+                6 => (suzhcombobox3, suzhtextbox3),
                 _ => (null, null)
             };
             if (combo == null) return;

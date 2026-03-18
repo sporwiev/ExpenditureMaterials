@@ -1,131 +1,167 @@
-﻿using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
+using System.Management;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using Wpf.Ui;
 using System.Text.Json;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using Microsoft.Win32;
-using Microsoft.AspNetCore.SignalR.Client;
 using BifServiceExpenditureMaterials.Helpers;
 using BifServiceExpenditureMaterials.UpdateApp;
-using System.Management;
+using Microsoft.Win32;
 
 namespace BifServiceExpenditureMaterials.Views.Pages
 {
     /// <summary>
-    /// Логика взаимодействия для UpdateApplication.xaml
+    /// Страница обновления приложения. Показывает список версий на сервере
+    /// и позволяет установить актуальную версию или (для администратора) загрузить новую.
     /// </summary>
     public partial class UpdateApplicationPage : UserControl
     {
+        private static readonly string AdminUuid = "215D5922-38C0-4840-AE4F-88A4C2841B36";
+
         public UpdateApplicationPage()
         {
             InitializeComponent();
             Loaded += UpdateApplicationPage_Loaded;
-            
-            
         }
+
+        // ─── Загрузка страницы ─────────────────────────────────────────────────
 
         private async void UpdateApplicationPage_Loaded(object sender, RoutedEventArgs e)
         {
-            CurrentVersion.Text = "Текущая версия: " + App.CurrentVersion;
-            HttpClient client = new HttpClient();
-            var JsonResponse = await client.GetAsync("http://" + Networks.GetIp() + ":5000/files");
-            var result = await JsonSerializer.DeserializeAsync<List<string>>(await JsonResponse.Content.ReadAsStreamAsync());
-            var currentversion = result.Count;
-            ListBoxVersionProject.Visibility = Visibility.Visible;
-            ListBoxVersionProject.ItemsSource = result;
-            if (GetSystemUUID() == "215D5922-38C0-4840-AE4F-88A4C2841B36")
-            {
+            CurrentVersion.Text = $"Текущая версия: {App.CurrentVersion}";
 
-                ButtonInstallProject.Content = "Загрузить новую версию";
-                ButtonInstall.Visibility = Visibility.Visible;
-            }
-            else
+            try
             {
-                ButtonInstallProject.Content = "Установить актуальную версию";
-                ButtonInstall.Visibility = Visibility.Collapsed;
-            }
-            ListBoxVersionProject.SelectedIndex = currentversion - 1;
-        }
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                var response = await client.GetAsync($"http://{Networks.GetIp()}:5000/files");
+                response.EnsureSuccessStatusCode();
 
-        public static string GetSystemUUID()
-        {
-            string uuid = "";
-            using (var mc = new ManagementClass("Win32_ComputerSystemProduct"))
-            {
-                foreach (var o in mc.GetInstances())
+                var versions = await JsonSerializer.DeserializeAsync<List<string>>(
+                    await response.Content.ReadAsStreamAsync());
+
+                if (versions == null || versions.Count == 0)
                 {
-                    var mo = (ManagementObject)o;
-                    uuid = mo["UUID"].ToString();
-                    break;
+                    StatusText.Text = "Список версий пуст";
+                    return;
                 }
+
+                ListBoxVersionProject.ItemsSource = versions;
+                ListBoxVersionProject.SelectedIndex = versions.Count - 1;
+
+                bool isAdmin = GetSystemUUID() == AdminUuid;
+                ButtonInstallProject.Visibility = isAdmin ? Visibility.Collapsed : Visibility.Visible;
+                ButtonInstall.Visibility = isAdmin ? Visibility.Visible : Visibility.Collapsed;
+
+                StatusText.Text = $"Доступно версий: {versions.Count}";
             }
-            return uuid;
+            catch (Exception ex)
+            {
+                StatusText.Text = "Не удалось подключиться к серверу обновлений";
+                Debug.WriteLine($"[UpdateApplicationPage] Ошибка загрузки версий: {ex.Message}");
+            }
         }
+
+        // ─── UUID системы ──────────────────────────────────────────────────────
+
+        private static string GetSystemUUID()
+        {
+            try
+            {
+                using var mc = new ManagementClass("Win32_ComputerSystemProduct");
+                foreach (ManagementObject mo in mc.GetInstances())
+                    return mo["UUID"]?.ToString() ?? "";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UpdateApplicationPage] GetSystemUUID error: {ex.Message}");
+            }
+            return "";
+        }
+
+        // ─── Установить версию (пользователь) ─────────────────────────────────
+
         private async void ButtonInstallProject_Click(object sender, RoutedEventArgs e)
         {
-            using var client = new HttpClient();
-            var response = await client.GetAsync("http://" + Networks.GetIp() + ":5000/PreviewVersion");
-            var JsonResult = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<string>(JsonResult);
-            var itog = new FileInfo(result).Name.Split('_')[1];
-            var len = itog.Length - 4;
-            itog = itog.Substring(0, len);
-
-            if (GetSystemUUID() == "215D5922-38C0-4840-AE4F-88A4C2841B36")
+            try
             {
-                OpenFileDialog ofd = new OpenFileDialog();
-                if (ofd.ShowDialog() == true)
-                {
-                    await UpdateNewVersionAsync(ofd.FileName);
-                    SignalRClient.NotifyUpdateAvailable(itog);
-                }
-            }else
-            {
-
-                UpdateManager.InstallUpdate(itog);
+                var version = await FetchLatestVersionNameAsync();
+                if (version == null) return;
+                UpdateManager.InstallUpdate(version);
             }
-
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UpdateApplicationPage] Ошибка установки: {ex.Message}");
+                MessageBox.Show($"Ошибка установки: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
+
+        // ─── Загрузить новую версию на сервер (администратор) ─────────────────
+
         private async void ButtonInstall_Click(object sender, RoutedEventArgs e)
         {
-            using var client = new HttpClient();
-            var response = await client.GetAsync("http://" + Networks.GetIp() + ":5000/PreviewVersion");
-            var JsonResult = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<string>(JsonResult);
-            var itog = new FileInfo(result).Name.Split('_')[1];
-            var len = itog.Length - 4;
-            itog = itog.Substring(0, len);
+            try
+            {
+                var ofd = new OpenFileDialog
+                {
+                    Filter = "ZIP-архив (*.zip)|*.zip",
+                    Title = "Выберите архив с новой версией"
+                };
 
-            UpdateManager.InstallUpdate(itog);
-            
+                if (ofd.ShowDialog() != true) return;
 
+                var version = await FetchLatestVersionNameAsync();
+                if (version == null) return;
+
+                await UploadNewVersionAsync(ofd.FileName);
+                SignalRClient.NotifyUpdateAvailable(version);
+
+                MessageBox.Show("Версия успешно загружена на сервер.", "Готово",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UpdateApplicationPage] Ошибка загрузки на сервер: {ex.Message}");
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
-        public async Task UpdateNewVersionAsync(string zipPath)
+
+        // ─── Вспомогательные методы ────────────────────────────────────────────
+
+        private static async Task<string?> FetchLatestVersionNameAsync()
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var response = await client.GetAsync($"http://{Networks.GetIp()}:5000/PreviewVersion");
+            response.EnsureSuccessStatusCode();
+
+            var jsonResult = await response.Content.ReadAsStringAsync();
+            var path = JsonSerializer.Deserialize<string>(jsonResult);
+
+            if (string.IsNullOrEmpty(path))
+                return null;
+
+            var fileName = new FileInfo(path).Name;
+            var parts = fileName.Split('_');
+            if (parts.Length < 2) return fileName;
+
+            var versionWithExt = parts[1];
+            return versionWithExt.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                ? versionWithExt[..^4]
+                : versionWithExt;
+        }
+
+        private static async Task UploadNewVersionAsync(string zipPath)
         {
             using var client = new HttpClient();
             using var form = new MultipartFormDataContent();
-            using var filestream = File.OpenRead(zipPath);
-            var fileContent = new StreamContent(filestream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
-            form.Add(fileContent, "file", Path.GetFileName(zipPath));
-            var response = await client.PostAsync("http://" + Networks.GetIp() + ":5000/upload", form);
-            var result = await response.Content.ReadAsStringAsync();
+            using var fileStream = File.OpenRead(zipPath);
+            var content = new StreamContent(fileStream);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+            form.Add(content, "file", Path.GetFileName(zipPath));
+            var response = await client.PostAsync($"http://{Networks.GetIp()}:5000/upload", form);
+            response.EnsureSuccessStatusCode();
         }
-
-        
     }
-    
 }
